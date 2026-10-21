@@ -1,7 +1,7 @@
+import { analysisWarning } from "./analysis-errors";
 import { suggestImage } from "./images";
 import { isImage, workflowComplete } from "./domain";
 import { VISION_MODEL } from "./ollama";
-import { visionProbe } from "./vision-probe";
 import { GuideReply } from "./GuideReply";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -193,7 +193,8 @@ function App() {
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
   const [ready, setReady] = useState(false);
-  const [visionReady, setVisionReady] = useState(false);
+  const [visionAvailable, setVisionAvailable] = useState(false);
+  const [visionVerified, setVisionVerified] = useState(false);
   const [visionStatus, setVisionStatus] = useState("Not checked");
   const [hasConnected, setHasConnected] = useState(false);
   const [checks, setChecks] = useState([false, false, false]);
@@ -260,7 +261,8 @@ function App() {
     setBusy("Checking local AI...");
     setChecks([false, false, false]);
     setReady(false);
-    setVisionReady(false);
+    setVisionAvailable(false);
+    setVisionVerified(false);
     setVisionStatus("Checking...");
     setNotice("");
     try {
@@ -281,16 +283,11 @@ function App() {
           "Text model missing. Run ollama pull qwen3:4b. Vision can still be checked.",
         );
       if (list.some((m) => m.name === VISION_MODEL)) {
-        try {
-          await visionProbe();
-          setVisionReady(true);
-          setVisionStatus("Ready - real vision inference verified");
-          setHasConnected(true);
-        } catch {
-          setVisionStatus(
-            "Installed, but inference failed. Check memory and retry; text analysis remains independent.",
-          );
-        }
+        setVisionAvailable(true);
+        setHasConnected(true);
+        setVisionStatus(
+          "Installed - not inference verified yet. Verified on your first successful image analysis; no extra image test runs during connection.",
+        );
       } else
         setVisionStatus(
           "Missing - run ollama pull qwen3-vl:4b. Text analysis remains available.",
@@ -373,9 +370,9 @@ function App() {
         } else
           try {
             const image = isImage(current.name);
-            if (image && !visionReady)
+            if (image && !visionAvailable)
               throw new Error(
-                "VISION_MODEL_MISSING: Connect and verify qwen3-vl:4b before image analysis. Text documents remain available.",
+                "VISION_MODEL_MISSING: Connect Local AI to detect qwen3-vl:4b before image analysis. Text documents remain available.",
               );
             if (!image && !ready)
               throw new Error(
@@ -391,6 +388,10 @@ function App() {
             const result = image
               ? await suggestImage(current.file, abort.current.signal)
               : await suggest(content.text, abort.current.signal);
+            if (image) {
+              setVisionVerified(true);
+              setVisionStatus("Ready - real image inference verified");
+            }
             updated = {
               ...updated,
               status: "suggested",
@@ -419,9 +420,7 @@ function App() {
                 ? code
                 : "EXTRACTION_FAILED",
             );
-            updated.warning = (e as Error).message.includes("fetch")
-              ? "Local AI connection failed. Check setup."
-              : (e as Error).message.slice(0, 200);
+            updated.warning = analysisWarning(e);
           }
         setEntries((previous) =>
           previous.map((e) => (e.id === current.id ? updated : e)),
@@ -782,7 +781,7 @@ function App() {
                       "rail-step " +
                       (workflowComplete(
                         i,
-                        ready || visionReady,
+                        ready || visionVerified,
                         entries,
                         manifest?.results,
                       )
@@ -808,7 +807,7 @@ function App() {
                   <div>
                     <span className="label">LOCAL AI</span>
                     <h3>
-                      {ready || visionReady
+                      {ready || visionVerified
                         ? "Local AI Ready"
                         : "A quick check before we begin."}
                     </h3>
@@ -846,7 +845,7 @@ function App() {
                     restarts Ollama.
                   </p>
                 </div>
-                {!ready && !visionReady && (
+                {!ready && !visionAvailable && (
                   <LocalAIHelp
                     expanded={[
                       "OLLAMA_UNREACHABLE",
@@ -959,7 +958,7 @@ function App() {
                         <Button
                           secondary
                           disabled={
-                            (!ready && !visionReady) || !!busy || !!manifest
+                            (!ready && !visionAvailable) || !!busy || !!manifest
                           }
                           onClick={analyze}
                         >
