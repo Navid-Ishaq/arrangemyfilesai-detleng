@@ -1,0 +1,25 @@
+# Local preparation only. Do not connect/sync until the owner approves.
+services:
+  - type: web
+    name: arrangemyfilesai-guide-api
+    runtime: node
+    plan: free
+    autoDeployTrigger: "off"
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 24.21.0
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-20b
+      - key: ALLOWED_ORIGINS
+        value: https://arrangemyfilesai.detleng.com
+      - key: GUIDE_MAX_REQUESTS_PER_MINUTE
+        value: "8"
+      - key: GUIDE_MAX_REQUESTS_PER_DAY
+        value: "100"
