@@ -2104,3 +2104,23 @@ input[type="checkbox"] {
   border: 1px solid #ccd7bd;
   border-radius: 5px;
 }
+
+/* A clear, welcoming invitation to the optional AI Guide. */
+.button.guide-launcher {
+  background: linear-gradient(120deg, #5034a5, #17647a);
+  color: #fff;
+  border: 1px solid #5034a5;
+  font-size: 19px;
+  font-weight: 700;
+  padding: 16px 24px;
+  gap: 12px;
+  box-shadow: 0 6px 18px rgba(80, 52, 165, .2);
+}
+.button.guide-launcher:hover:not(:disabled) {
+  background: linear-gradient(120deg, #42298c, #105267);
+  box-shadow: 0 8px 22px rgba(80, 52, 165, .28);
+}
+.guide-emoji { font-size: 28px; line-height: 1; }
+@media (max-width: 600px) {
+  .button.guide-launcher { font-size: 18px; padding: 14px 18px; }
+}

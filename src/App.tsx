@@ -704,7 +704,7 @@ function App() {
                 className="button secondary"
                 onClick={() => setGuide(!guide)}
               >
-                <MessageCircle size={17} /> DeTLeng AI Guide
+                <span className="guide-emoji" aria-hidden="true">🤖</span> DeTLeng AI Guide
               </button>
             </div>
             <div className="workspace-layout">
