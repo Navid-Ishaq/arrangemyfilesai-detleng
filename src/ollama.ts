@@ -2,6 +2,51 @@ import { z } from "zod";
 import type { Suggestion } from "./domain";
 export const OLLAMA = "http://127.0.0.1:11434";
 export const MODEL = "qwen3:4b";
+export class LocalAIError extends Error {
+  constructor(
+    public code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "LocalAIError";
+  }
+}
+export function connectionMessage(code: string, origin: string): string {
+  if (code === "MODEL_MISSING")
+    return "Ollama is reachable, but qwen3:4b is missing. Run ollama pull qwen3:4b, then check again.";
+  if (code === "OLLAMA_TIMEOUT")
+    return "Ollama took too long to respond. Start Ollama, check available memory, and try again. Your selected files are unchanged.";
+  if (code === "OLLAMA_INVALID_RESPONSE")
+    return "Ollama returned an unexpected response. Update/restart Ollama and retry. Local AI is not marked ready.";
+  if (code === "INFERENCE_FAILED")
+    return "Ollama is reachable, but model inference failed. Check that qwen3:4b can run locally, then retry.";
+  return `This page could not connect to Ollama on your computer. Start Ollama; allow ${origin} in OLLAMA_ORIGINS and restart Ollama. If the browser asks for Local Network Access, allow it for this site. Folder access is separate and does not connect the AI. Your files are unchanged.`;
+}
+async function localFetch(
+  path: string,
+  options: RequestInit,
+): Promise<Response> {
+  let response: Response;
+  try {
+    response = await fetch(`${OLLAMA}${path}`, options);
+  } catch (error) {
+    if (options.signal?.aborted) {
+      if (options.signal.reason?.name === "TimeoutError")
+        throw new LocalAIError("OLLAMA_TIMEOUT", "Local AI request timed out.");
+      throw error;
+    }
+    throw new LocalAIError(
+      "OLLAMA_UNREACHABLE",
+      "Local AI connection failed. Browser permissions, allowed origins, or an unavailable Ollama service may be responsible.",
+    );
+  }
+  if (response.status === 403)
+    throw new LocalAIError(
+      "OLLAMA_UNREACHABLE",
+      "Ollama rejected this website origin.",
+    );
+  return response;
+}
 export const suggestionSchema = z
   .object({
     title: z.string().min(1).max(120),
@@ -24,17 +69,29 @@ const format = {
   additionalProperties: false,
 };
 export async function models() {
-  const r = await fetch(`${OLLAMA}/api/tags`, {
+  const r = await localFetch("/api/tags", {
     signal: AbortSignal.timeout(8000),
   });
-  if (!r.ok) throw new Error("OLLAMA_UNREACHABLE");
-  return (await r.json()).models as { name: string }[];
+  if (!r.ok)
+    throw new LocalAIError(
+      "OLLAMA_UNREACHABLE",
+      "Ollama could not be reached.",
+    );
+  const parsed = z
+    .object({ models: z.array(z.object({ name: z.string() })) })
+    .safeParse(await r.json().catch(() => null));
+  if (!parsed.success)
+    throw new LocalAIError(
+      "OLLAMA_INVALID_RESPONSE",
+      "Invalid Ollama model list.",
+    );
+  return parsed.data.models;
 }
 export async function suggest(
   text: string,
   signal?: AbortSignal,
 ): Promise<Suggestion> {
-  const r = await fetch(`${OLLAMA}/api/chat`, {
+  const r = await localFetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     signal: signal
@@ -57,14 +114,27 @@ export async function suggest(
     }),
   });
   if (!r.ok)
-    throw new Error(r.status === 404 ? "MODEL_MISSING" : "INFERENCE_FAILED");
-  const data = await r.json();
-  return suggestionSchema.parse(JSON.parse(data.message.content));
+    throw new LocalAIError(
+      r.status === 404 ? "MODEL_MISSING" : "INFERENCE_FAILED",
+      "Local inference failed.",
+    );
+  try {
+    const data = await r.json();
+    return suggestionSchema.parse(JSON.parse(data.message.content));
+  } catch {
+    throw new LocalAIError(
+      "OLLAMA_INVALID_RESPONSE",
+      "Local model did not return a valid suggestion.",
+    );
+  }
 }
 export async function readiness() {
   const installed = await models();
   if (!installed.some((m) => m.name === MODEL))
-    throw new Error("MODEL_MISSING");
+    throw new LocalAIError(
+      "MODEL_MISSING",
+      "The required local model is not installed.",
+    );
   await suggest(
     "Synthetic setup check. A short lesson about planning project tasks, timelines and milestones.",
   );

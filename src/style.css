@@ -2053,3 +2053,54 @@ input[type="checkbox"] {
   font-size: 10px;
   color: #4e7143;
 }
+.local-ai-help {
+  margin: 16px 0 22px;
+  border: 1px solid #d7e2cb;
+  background: #f0f4e9;
+  border-radius: 10px;
+  padding: 17px 20px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+.local-ai-help summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: #36583f;
+}
+.local-ai-help p {
+  font-size: 12px;
+}
+.local-ai-help li {
+  margin: 10px 0;
+}
+.local-ai-help code {
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.local-ai-help a {
+  color: #315e43;
+  text-decoration: underline;
+}
+.local-ai-help a svg {
+  display: inline;
+}
+.setup-command {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  padding: 15px;
+  background: #fffefa;
+  border: 1px solid #d8e1ce;
+  border-radius: 7px;
+}
+.setup-command code {
+  white-space: pre-wrap;
+  word-break: break-word;
+  flex: 1;
+  min-width: 0;
+}
+.setup-command button {
+  padding: 8px;
+  border: 1px solid #ccd7bd;
+  border-radius: 5px;
+}

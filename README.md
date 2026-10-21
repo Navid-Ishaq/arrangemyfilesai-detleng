@@ -86,3 +86,7 @@ Dependencies are bundled into the frontend; no remote scripts, fonts or analytic
 ## Deployment boundary
 
 No push or external deployment is part of local development. Existing repository/CNAME identity is preserved. Frontend build goes to `dist`; Guide runs separately on Node. See `docs/DEPLOYMENT.md` and the prepared `render.yaml`. Do not connect Mastra Platform, create Render services, modify DNS, enable billing or alter other projects without owner approval.
+
+## Live website connection troubleshooting
+
+If Check local AI reports a network failure on the public domain, see docs/HOSTED-LOCAL-AI-FIX.md. The inline Windows setup panel and public/connect-local-ai.cmd helper configure only the official website origin. Restart Ollama after the setting changes. Folder permission and local AI permission are independent.

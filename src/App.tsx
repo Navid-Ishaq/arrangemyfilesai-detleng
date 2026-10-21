@@ -41,7 +41,15 @@ import {
 } from "./domain";
 import { inventory, copyApproved, rollback, Manifest } from "./files";
 import { extract } from "./extract";
-import { models, readiness, suggest, MODEL } from "./ollama";
+import {
+  models,
+  readiness,
+  suggest,
+  MODEL,
+  LocalAIError,
+  connectionMessage,
+} from "./ollama";
+import { LocalAIHelp } from "./LocalAIHelp";
 import { sampleDocuments, demoRows } from "./samples";
 import { BrowserChecks } from "./BrowserChecks";
 import { guideEndpoint } from "./guide-client";
@@ -214,6 +222,17 @@ function App() {
           ? "choose"
           : "setup";
   function report(e: unknown) {
+    if (e instanceof LocalAIError) {
+      setErrorCode(
+        e.code === "MODEL_MISSING"
+          ? "MODEL_MISSING"
+          : e.code === "INFERENCE_FAILED"
+            ? "INFERENCE_FAILED"
+            : "OLLAMA_UNREACHABLE",
+      );
+      setNotice(connectionMessage(e.code, window.location.origin));
+      return;
+    }
     const raw = e instanceof Error ? e.message : "";
     const code =
       ["MODEL_MISSING", "INFERENCE_FAILED", "OLLAMA_UNREACHABLE"].find((c) =>
@@ -237,7 +256,11 @@ function App() {
     try {
       const list = await models();
       setChecks([true, false, false]);
-      if (!list.some((m) => m.name === MODEL)) throw new Error("MODEL_MISSING");
+      if (!list.some((m) => m.name === MODEL))
+        throw new LocalAIError(
+          "MODEL_MISSING",
+          "The required local model is not installed.",
+        );
       setChecks([true, true, false]);
       await readiness();
       setChecks([true, true, true]);
@@ -755,6 +778,15 @@ function App() {
                     ))}
                   </div>
                 </div>
+                {!ready && (
+                  <LocalAIHelp
+                    expanded={[
+                      "OLLAMA_UNREACHABLE",
+                      "MODEL_MISSING",
+                      "INFERENCE_FAILED",
+                    ].includes(errorCode)}
+                  />
+                )}
                 {!supportedBrowser && (
                   <div className="notice">
                     Folder operations require a supported desktop browser in a

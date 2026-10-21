@@ -1,4 +1,4 @@
-﻿name: Deploy Arrange My Files AI
+name: Deploy Arrange My Files AI
 
 on:
   push:
@@ -39,6 +39,8 @@ jobs:
         run: npm test
 
       - name: Build website
+        env:
+          VITE_GUIDE_API_URL: https://arrangemyfilesai-guide-api.onrender.com
         run: npm run build
 
       - name: Configure Pages
