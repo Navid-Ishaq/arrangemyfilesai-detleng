@@ -1,11 +1,11 @@
 :root {
   font-family: Inter, "Segoe UI", Arial, sans-serif;
-  color: #253c35;
-  background: #faf9f5;
+  color: #202b3c;
+  background: #f7f8fb;
   font-synthesis: none;
-  font-size: 15px;
+  font-size: 18px;
   --green: #254e40;
-  --muted: #6b756e;
+  --muted: #465469;
   --line: #e2e4dc;
   --mint: #e8efe7;
   --peach: #f6e9dc;
@@ -82,7 +82,7 @@ h3 {
   letter-spacing: -0.025em;
 }
 small {
-  font-size: 12px;
+  font-size: 16px;
 }
 svg {
   flex-shrink: 0;
@@ -98,7 +98,7 @@ main {
   justify-content: space-between;
   align-items: center;
   padding: 0 5%;
-  font-size: 11px;
+  font-size: 14px;
   color: #66746b;
 }
 .ecosystem div {
@@ -120,7 +120,7 @@ header {
   align-items: center;
   gap: 30px;
   border-bottom: 1px solid var(--line);
-  background: #faf9f5;
+  background: #f7f8fb;
 }
 .brand {
   display: flex;
@@ -132,7 +132,7 @@ header {
   letter-spacing: -0.5px;
 }
 .brand b {
-  font-size: 11px;
+  font-size: 14px;
   background: #e8eee4;
   padding: 3px 5px;
   border-radius: 5px;
@@ -141,7 +141,7 @@ header {
 }
 .brand small {
   display: block;
-  font-size: 8px;
+  font-size: 14px;
   letter-spacing: 2.5px;
   margin-top: 5px;
   color: #7c847b;
@@ -160,7 +160,7 @@ nav {
   display: flex;
   gap: 24px;
   margin: auto;
-  font-size: 12px;
+  font-size: 16px;
 }
 nav button {
   padding: 14px 0;
@@ -181,7 +181,7 @@ nav button.active:after {
   background: #5a755a;
 }
 .header-action {
-  font-size: 12px;
+  font-size: 16px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -202,7 +202,7 @@ nav button.active:after {
   align-items: center;
 }
 .eyebrow {
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 1.8px;
   color: #6e7d6a;
   font-weight: 600;
@@ -237,7 +237,7 @@ nav button.active:after {
 }
 .hero-description {
   max-width: 400px;
-  font-size: 14px;
+  font-size: 16px;
 }
 .muted {
   color: var(--muted);
@@ -258,7 +258,7 @@ nav button.active:after {
   padding: 14px 20px;
   border: 1px solid var(--green);
   border-radius: 7px;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 500;
   min-height: 44px;
   transition:
@@ -281,7 +281,7 @@ nav button.active:after {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 10px;
+  font-size: 14px;
   color: #7a8377;
   margin-top: 26px;
 }
@@ -306,13 +306,13 @@ nav button.active:after {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 8px;
+  font-size: 14px;
   letter-spacing: 1.4px;
   color: #798771;
 }
 .visual-label > span:last-child {
   margin-left: auto;
-  font-size: 8px;
+  font-size: 14px;
 }
 .paper-stack {
   width: 76%;
@@ -356,14 +356,14 @@ nav button.active:after {
   margin-right: 14px;
 }
 .paper.front small {
-  font-size: 7px;
+  font-size: 14px;
   letter-spacing: 1.4px;
   color: #899180;
   display: block;
   margin: 8px 0 8px;
 }
 .old-name {
-  font-size: 14px;
+  font-size: 16px;
   color: #7d8277;
   text-decoration: line-through;
   text-decoration-color: #b6bbaa;
@@ -373,7 +373,7 @@ nav button.active:after {
   align-items: center;
   gap: 8px;
   margin: 28px 0 15px;
-  font-size: 9px;
+  font-size: 14px;
   color: #8b9a78;
 }
 .paper.front strong {
@@ -387,7 +387,7 @@ nav button.active:after {
   align-items: center;
   color: #8b927d;
   margin-top: 14px;
-  font-size: 10px;
+  font-size: 14px;
 }
 .paper-bottom {
   display: flex;
@@ -396,7 +396,7 @@ nav button.active:after {
   border-top: 1px solid #edf0e5;
   margin-top: 19px;
   padding-top: 13px;
-  font-size: 8px;
+  font-size: 14px;
   color: #78866b;
 }
 .paper-bottom > span:first-child {
@@ -411,7 +411,7 @@ nav button.active:after {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  font-size: 8px;
+  font-size: 14px;
 }
 .floating-note {
   position: absolute;
@@ -425,14 +425,14 @@ nav button.active:after {
   box-shadow: 0 5px 18px #5363410b;
   border-radius: 9px;
   padding: 14px 19px;
-  font-size: 11px;
+  font-size: 14px;
   transform: rotate(2deg);
   color: #5d7757;
 }
 .floating-note small {
   display: block;
   color: #8d9685;
-  font-size: 9px;
+  font-size: 14px;
   margin-top: 5px;
 }
 .visual-caption {
@@ -441,7 +441,7 @@ nav button.active:after {
   left: 0;
   right: 0;
   text-align: center;
-  font-size: 8px;
+  font-size: 14px;
   color: #919883;
 }
 .promise-band {
@@ -464,13 +464,13 @@ nav button.active:after {
   color: #7a8e6d;
 }
 .promise-band strong {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 500;
   display: block;
 }
 .promise-band small {
   display: block;
-  font-size: 10px;
+  font-size: 14px;
   margin-top: 6px;
   color: #7c8576;
 }
@@ -493,7 +493,7 @@ nav button.active:after {
   font-size: 31px;
 }
 .section-heading > p {
-  font-size: 12px;
+  font-size: 16px;
   margin: 0;
 }
 .three-grid {
@@ -514,14 +514,14 @@ nav button.active:after {
   margin-bottom: 27px;
 }
 .step-card > div span {
-  font-size: 11px;
+  font-size: 14px;
   color: #a6ac9c;
 }
 .step-card h3 {
   font-size: 19px;
 }
 .step-card p {
-  font-size: 12px;
+  font-size: 16px;
   margin-bottom: 0;
 }
 .family-teaser {
@@ -538,7 +538,7 @@ nav button.active:after {
   font-size: 34px;
 }
 .family-teaser p {
-  font-size: 12px;
+  font-size: 16px;
 }
 .family-orbit {
   display: flex;
@@ -555,7 +555,7 @@ nav button.active:after {
   background: #fff;
   border: 1px solid #dfe2d7;
   border-radius: 11px;
-  font-size: 16px;
+  font-size: 18px;
   box-shadow: 0 4px 0 #e1e4d9;
 }
 .mint {
@@ -573,12 +573,12 @@ nav button.active:after {
   justify-content: center;
   gap: 12px;
   margin: 20px 7% 50px;
-  font-size: 10px;
+  font-size: 14px;
   color: #8c9587;
 }
 .cloud-note p {
   margin: 0;
-  font-size: 10px;
+  font-size: 14px;
 }
 .cloud-note button {
   color: #4f7054;
@@ -586,7 +586,7 @@ nav button.active:after {
   align-items: center;
   gap: 4px;
   padding: 0 5px;
-  font-size: 10px;
+  font-size: 14px;
 }
 footer {
   border-top: 1px solid var(--line);
@@ -597,7 +597,7 @@ footer {
   gap: 35px;
 }
 footer p {
-  font-size: 12px;
+  font-size: 16px;
 }
 footer > div:not(:first-child):not(:last-child) {
   display: flex;
@@ -607,7 +607,7 @@ footer > div:not(:first-child):not(:last-child) {
 }
 footer a:not(.brand),
 footer button {
-  font-size: 11px;
+  font-size: 14px;
   padding: 0;
   display: flex;
   align-items: center;
@@ -615,12 +615,12 @@ footer button {
   color: #6e7a6b;
 }
 footer small {
-  font-size: 9px;
+  font-size: 14px;
   color: #8c9587;
 }
 .label,
 .rail-label {
-  font-size: 9px;
+  font-size: 14px;
   letter-spacing: 1.5px;
   color: #839079;
   font-weight: 600;
@@ -631,7 +631,7 @@ footer small {
   padding-top: 20px;
   display: flex;
   justify-content: space-between;
-  font-size: 9px;
+  font-size: 14px;
   color: #929b8b;
 }
 .footer-bottom > span {
@@ -658,7 +658,7 @@ footer small {
   margin-bottom: 15px;
 }
 .workspace-title p {
-  font-size: 12px;
+  font-size: 16px;
   margin-bottom: 0;
 }
 .workspace-layout {
@@ -677,7 +677,7 @@ footer small {
   display: flex;
   gap: 10px;
   align-items: center;
-  font-size: 11px;
+  font-size: 14px;
   color: #899180;
   margin: 0 0 23px;
 }
@@ -688,7 +688,7 @@ footer small {
   border: 1px solid #dce2d2;
   width: 25px;
   height: 25px;
-  font-size: 10px;
+  font-size: 14px;
 }
 .rail-step.done {
   color: #3d6650;
@@ -705,17 +705,17 @@ footer small {
 }
 .privacy-card strong {
   display: block;
-  font-size: 12px;
+  font-size: 16px;
   margin-top: 15px;
   font-weight: 500;
 }
 .privacy-card p {
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.65;
 }
 .privacy-card button {
   padding: 0;
-  font-size: 10px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -739,7 +739,7 @@ footer small {
   margin-top: 8px;
 }
 .setup-card p {
-  font-size: 11px;
+  font-size: 14px;
   margin-bottom: 0;
 }
 .checklist {
@@ -749,7 +749,7 @@ footer small {
   border-top: 1px solid #edf0e5;
   padding-top: 17px;
   margin-top: 7px;
-  font-size: 10px;
+  font-size: 14px;
   color: #9ba28e;
 }
 .checklist > span {
@@ -788,7 +788,7 @@ footer small {
   font-size: 23px;
 }
 .folder-picker p {
-  font-size: 12px;
+  font-size: 16px;
 }
 .folder-picker .actions {
   justify-content: center;
@@ -796,11 +796,11 @@ footer small {
 .folder-picker small {
   display: block;
   margin-top: 22px;
-  font-size: 9px;
+  font-size: 14px;
   color: #929d86;
 }
 .text-button {
-  font-size: 11px;
+  font-size: 14px;
   padding: 10px;
   color: #5f7952;
 }
@@ -809,7 +809,7 @@ footer small {
   border-radius: 7px;
   background: #f6f2e6;
   padding: 14px 17px;
-  font-size: 12px;
+  font-size: 16px;
   color: #797456;
   line-height: 1.6;
   margin: 20px 0;
@@ -821,13 +821,13 @@ footer small {
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 12px;
+  font-size: 16px;
   margin: 18px 0;
   color: #5b7651;
 }
 .progress button {
   margin-left: auto;
-  font-size: 11px;
+  font-size: 14px;
   text-decoration: underline;
 }
 .spin {
@@ -846,11 +846,11 @@ footer small {
   margin: 35px 0 15px;
 }
 .inventory-toolbar p {
-  font-size: 11px;
+  font-size: 14px;
   margin: 7px 0;
 }
 .count {
-  font-size: 10px;
+  font-size: 14px;
   background: #e8eddf;
   border-radius: 5px;
   padding: 4px 8px;
@@ -876,11 +876,11 @@ footer small {
   border: 1px solid var(--line);
   background: #fffefa;
   border-radius: 5px;
-  font-size: 11px;
+  font-size: 14px;
   padding: 9px;
 }
 .filters button {
-  font-size: 10px;
+  font-size: 14px;
   color: #6b8159;
 }
 .review-list {
@@ -901,13 +901,13 @@ footer small {
 }
 .review-source strong {
   display: block;
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 500;
   overflow-wrap: anywhere;
 }
 .review-source small {
   display: block;
-  font-size: 9px;
+  font-size: 14px;
   margin-top: 5px;
   color: #9aa18e;
   overflow-wrap: anywhere;
@@ -920,7 +920,7 @@ footer small {
   min-width: 0;
 }
 .status-tag {
-  font-size: 9px;
+  font-size: 14px;
   white-space: nowrap;
   background: #edf0e6;
   color: #7c896c;
@@ -934,7 +934,7 @@ footer small {
   gap: 12px;
 }
 .review-edit label {
-  font-size: 9px;
+  font-size: 14px;
   color: #839076;
 }
 .review-edit label span {
@@ -947,19 +947,19 @@ footer small {
   padding: 9px;
   margin-top: 7px;
   background: #fdfdf8;
-  font-size: 11px;
+  font-size: 14px;
   color: #475d40;
 }
 .review-edit p {
   grid-column: 1/-1;
-  font-size: 10px;
+  font-size: 14px;
   margin: 0;
   display: flex;
   gap: 7px;
   align-items: start;
 }
 .warning {
-  font-size: 10px;
+  font-size: 14px;
   background: #faf3df;
   color: #92814d;
   padding: 10px 17px;
@@ -975,7 +975,7 @@ footer small {
   gap: 15px;
 }
 .copy-bar > span {
-  font-size: 10px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -985,7 +985,7 @@ footer small {
   background: #ecf0e5;
   border-radius: 7px;
   padding: 20px;
-  font-size: 11px;
+  font-size: 14px;
   line-height: 2;
   margin-bottom: 20px;
   overflow-wrap: anywhere;
@@ -1001,12 +1001,12 @@ footer small {
   border-radius: 9px;
 }
 .results > p {
-  font-size: 11px;
+  font-size: 14px;
 }
 .results > div:not(.actions) {
   border-bottom: 1px solid #dbe3cf;
   padding: 12px 0;
-  font-size: 11px;
+  font-size: 14px;
   overflow-wrap: anywhere;
 }
 .results > div > span {
@@ -1053,7 +1053,7 @@ footer small {
 .family-welcome p {
   max-width: 650px;
   margin: 20px auto 25px;
-  font-size: 14px;
+  font-size: 16px;
 }
 .family-welcome .text-button {
   display: block;
@@ -1079,18 +1079,18 @@ footer small {
   margin-top: 24px;
 }
 .family-card p {
-  font-size: 11px;
+  font-size: 14px;
   margin: 10px 0 25px;
 }
 .family-card > span {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 11px;
+  font-size: 14px;
 }
 .family-footnote {
   text-align: center;
-  font-size: 10px;
+  font-size: 14px;
   max-width: 700px;
   margin: 30px auto 0;
 }
@@ -1104,7 +1104,7 @@ footer small {
 .scene-top {
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: 14px;
   color: #7c8871;
 }
 .scene-top button {
@@ -1137,25 +1137,25 @@ footer small {
     0 0 0 36px #ffffff12;
 }
 .scene-symbol span {
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.6px;
 }
 .scene-body .eyebrow {
   line-height: 1.6;
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 1px;
 }
 .scene-body h2 {
   font-size: 58px;
 }
 .scene-description {
-  font-size: 15px;
+  font-size: 18px;
 }
 .scene-body dl {
   display: grid;
   grid-template-columns: 110px 1fr;
   gap: 12px;
-  font-size: 11px;
+  font-size: 14px;
   line-height: 1.7;
 }
 .scene-body dt {
@@ -1168,7 +1168,7 @@ footer small {
   display: flex;
   gap: 8px;
   align-items: center;
-  font-size: 10px;
+  font-size: 14px;
   margin: 23px 0;
   color: #79856b;
 }
@@ -1176,7 +1176,7 @@ footer small {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font-size: 11px;
+  font-size: 14px;
   border-bottom: 1px solid #aaba98;
   padding-bottom: 6px;
   color: #557146;
@@ -1219,7 +1219,7 @@ footer small {
   display: flex;
   align-items: center;
   gap: 11px;
-  font-size: 12px;
+  font-size: 16px;
   color: #9ba58d;
 }
 .demo-progress span {
@@ -1229,7 +1229,7 @@ footer small {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 10px;
+  font-size: 14px;
 }
 .demo-progress .current {
   color: #416440;
@@ -1248,7 +1248,7 @@ footer small {
   font-size: 26px;
 }
 .demo-board .section-heading p {
-  font-size: 12px;
+  font-size: 16px;
 }
 .demo-file {
   border-top: 1px solid #e9ece1;
@@ -1264,22 +1264,22 @@ footer small {
   flex: 1;
 }
 .demo-file small {
-  font-size: 8px;
+  font-size: 14px;
   letter-spacing: 1.2px;
   color: #91a080;
 }
 .demo-file strong {
   display: block;
   margin-top: 7px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 500;
 }
 .demo-file p {
-  font-size: 11px;
+  font-size: 14px;
   margin: 8px 0 0;
 }
 .demo-select {
-  font-size: 11px;
+  font-size: 14px;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -1292,7 +1292,7 @@ footer small {
   margin-top: 25px;
 }
 .demo-bottom > span {
-  font-size: 11px;
+  font-size: 14px;
   color: #7d8b6c;
 }
 .help-grid {
@@ -1312,10 +1312,10 @@ footer small {
   margin: 18px 0;
 }
 .help-grid p {
-  font-size: 12px;
+  font-size: 16px;
 }
 .help-grid code {
-  font-size: 11px;
+  font-size: 14px;
   overflow-wrap: anywhere;
 }
 .command {
@@ -1363,12 +1363,12 @@ footer small {
   gap: 11px;
 }
 .guide-header strong {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 500;
 }
 .guide-header small {
   display: block;
-  font-size: 10px;
+  font-size: 14px;
   color: #8c9980;
   margin-top: 4px;
 }
@@ -1398,7 +1398,7 @@ footer small {
   color: #919170;
 }
 .guide-disclosure p {
-  font-size: 10px;
+  font-size: 14px;
   line-height: 1.6;
   margin: 0;
 }
@@ -1406,7 +1406,7 @@ footer small {
   font-size: 23px;
 }
 .guide-content > p {
-  font-size: 12px;
+  font-size: 16px;
 }
 .guide-prompts {
   display: grid;
@@ -1417,7 +1417,7 @@ footer small {
   border: 1px solid #e3e8d9;
   border-radius: 6px;
   padding: 11px;
-  font-size: 11px;
+  font-size: 14px;
   text-align: left;
   display: flex;
   justify-content: space-between;
@@ -1426,11 +1426,11 @@ footer small {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 10px;
+  font-size: 14px;
   color: #81906f;
 }
 .guide-content > small {
-  font-size: 9px;
+  font-size: 14px;
   display: block;
   line-height: 1.7;
   color: #879575;
@@ -1449,17 +1449,17 @@ footer small {
   background: #f9f0db;
 }
 .chat-message small {
-  font-size: 8px;
+  font-size: 14px;
   letter-spacing: 1px;
   color: #879776;
 }
 .chat-message p {
-  font-size: 12px;
+  font-size: 16px;
   white-space: pre-wrap;
   margin: 8px 0 0;
 }
 .chat-message button {
-  font-size: 10px;
+  font-size: 14px;
   margin-top: 12px;
   color: #5e7b4d;
   display: flex;
@@ -1472,7 +1472,7 @@ footer small {
 }
 .guide-panel form label {
   display: block;
-  font-size: 9px;
+  font-size: 14px;
   color: #8e9a81;
   margin-bottom: 9px;
 }
@@ -1486,7 +1486,7 @@ footer small {
   max-height: 150px;
   flex: 1;
   min-width: 0;
-  font-size: 11px;
+  font-size: 14px;
   padding: 10px;
   border-radius: 6px;
   border: 1px solid #dce4d2;
@@ -1526,7 +1526,7 @@ input[type="checkbox"] {
   }
   nav {
     gap: 15px;
-    font-size: 11px;
+    font-size: 14px;
   }
   .header-action {
     display: none;
@@ -1545,10 +1545,10 @@ input[type="checkbox"] {
     padding: 22px 18px;
   }
   .paper.front strong {
-    font-size: 16px;
+    font-size: 18px;
   }
   .hero .lead {
-    font-size: 16px;
+    font-size: 18px;
   }
   .section {
     padding: 55px 5%;
@@ -1574,7 +1574,7 @@ input[type="checkbox"] {
     justify-content: space-between;
   }
   .brand {
-    font-size: 15px;
+    font-size: 18px;
   }
   .mobile-menu {
     display: block;
@@ -1585,7 +1585,7 @@ input[type="checkbox"] {
     top: 79px;
     left: 0;
     right: 0;
-    background: #faf9f5;
+    background: #f7f8fb;
     z-index: 10;
     border-bottom: 1px solid var(--line);
     padding: 15px 5%;
@@ -1621,7 +1621,7 @@ input[type="checkbox"] {
     align-items: start;
   }
   .promise-band small {
-    font-size: 9px;
+    font-size: 14px;
     line-height: 1.5;
   }
   .section-heading {
@@ -1647,7 +1647,7 @@ input[type="checkbox"] {
     font-size: 28px;
   }
   .family-pill {
-    font-size: 12px;
+    font-size: 16px;
     padding: 13px;
   }
   .workspace-layout {
@@ -1679,7 +1679,7 @@ input[type="checkbox"] {
     gap: 15px;
   }
   .scene-symbol span {
-    font-size: 8px;
+    font-size: 14px;
   }
   .scene-symbol svg {
     width: 50px;
@@ -1701,7 +1701,7 @@ input[type="checkbox"] {
     padding: 24px;
   }
   .demo-progress button {
-    font-size: 10px;
+    font-size: 14px;
     gap: 6px;
   }
   .demo-board {
@@ -1716,7 +1716,7 @@ input[type="checkbox"] {
 }
 @media (max-width: 540px) {
   .ecosystem {
-    font-size: 9px;
+    font-size: 14px;
     padding: 0 5%;
     height: 32px;
   }
@@ -1733,14 +1733,14 @@ input[type="checkbox"] {
     letter-spacing: -2.2px;
   }
   .hero .eyebrow {
-    font-size: 8px;
+    font-size: 14px;
     letter-spacing: 1.2px;
   }
   .hero .lead {
-    font-size: 16px;
+    font-size: 18px;
   }
   .hero-description {
-    font-size: 12px;
+    font-size: 16px;
   }
   .hero-visual {
     height: 385px;
@@ -1755,7 +1755,7 @@ input[type="checkbox"] {
     padding: 20px 17px;
   }
   .paper.front strong {
-    font-size: 15px;
+    font-size: 18px;
   }
   .paper-divider {
     margin-top: 23px;
@@ -1766,20 +1766,20 @@ input[type="checkbox"] {
   .floating-note {
     bottom: 30px;
     padding: 11px 15px;
-    font-size: 10px;
+    font-size: 14px;
   }
   .visual-label {
-    font-size: 7px;
+    font-size: 14px;
     left: 17px;
     right: 17px;
     letter-spacing: 0.7px;
   }
   .visual-caption {
-    font-size: 7px;
+    font-size: 14px;
     bottom: 10px;
   }
   .trust-line {
-    font-size: 9px;
+    font-size: 14px;
   }
   .promise-band {
     grid-template-columns: 1fr;
@@ -1790,7 +1790,7 @@ input[type="checkbox"] {
     justify-content: start;
   }
   .promise-band small {
-    font-size: 10px;
+    font-size: 14px;
   }
   .three-grid,
   .family-teaser,
@@ -1822,7 +1822,7 @@ input[type="checkbox"] {
     align-items: start;
   }
   .cloud-note p {
-    font-size: 9px;
+    font-size: 14px;
   }
   .workspace-title {
     flex-direction: column;
@@ -1859,7 +1859,7 @@ input[type="checkbox"] {
     display: none;
   }
   .status-tag {
-    font-size: 8px;
+    font-size: 14px;
     padding: 5px;
   }
   .inventory-toolbar {
@@ -1873,7 +1873,7 @@ input[type="checkbox"] {
   }
   .family-page > .lead,
   .demo-page > .lead {
-    font-size: 16px;
+    font-size: 18px;
   }
   .family-welcome {
     padding: 30px 22px;
@@ -1882,7 +1882,7 @@ input[type="checkbox"] {
     font-size: 28px;
   }
   .family-welcome p {
-    font-size: 12px;
+    font-size: 16px;
   }
   .family-grid {
     gap: 12px;
@@ -1894,10 +1894,10 @@ input[type="checkbox"] {
     font-size: 21px;
   }
   .family-card p {
-    font-size: 10px;
+    font-size: 14px;
   }
   .family-card > span {
-    font-size: 9px;
+    font-size: 14px;
   }
   .family-scene {
     padding: 23px;
@@ -1917,13 +1917,13 @@ input[type="checkbox"] {
     height: 45px;
   }
   .scene-body .scene-description {
-    font-size: 13px;
+    font-size: 16px;
   }
   .scene-body h2 {
     font-size: 43px;
   }
   .scene-controls .button {
-    font-size: 10px;
+    font-size: 14px;
     padding: 12px;
     gap: 7px;
   }
@@ -1933,7 +1933,7 @@ input[type="checkbox"] {
   .demo-progress button {
     flex-direction: column;
     align-items: start;
-    font-size: 9px;
+    font-size: 14px;
     line-height: 1.6;
     text-align: left;
   }
@@ -1944,10 +1944,10 @@ input[type="checkbox"] {
     gap: 10px;
   }
   .demo-file strong {
-    font-size: 12px;
+    font-size: 16px;
   }
   .demo-file p {
-    font-size: 10px;
+    font-size: 14px;
   }
   .demo-file > svg {
     width: 18px;
@@ -1957,10 +1957,10 @@ input[type="checkbox"] {
     flex-direction: column;
   }
   .demo-select {
-    font-size: 9px;
+    font-size: 14px;
   }
   .notice {
-    font-size: 11px;
+    font-size: 14px;
   }
   .guide-panel {
     top: 8px;
@@ -1994,7 +1994,7 @@ input[type="checkbox"] {
   }
 }
 .file-input-label {
-  font-size: 10px;
+  font-size: 14px;
   position: relative;
   padding: 10px;
   color: #5f7952;
@@ -2038,11 +2038,11 @@ input[type="checkbox"] {
   margin-bottom: 22px;
 }
 .local-stage-help strong {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 500;
 }
 .local-stage-help p {
-  font-size: 11px;
+  font-size: 14px;
   margin: 8px 0;
 }
 .local-stage-help button {
@@ -2050,7 +2050,7 @@ input[type="checkbox"] {
   display: flex;
   gap: 7px;
   align-items: center;
-  font-size: 10px;
+  font-size: 14px;
   color: #4e7143;
 }
 .local-ai-help {
@@ -2059,7 +2059,7 @@ input[type="checkbox"] {
   background: #f0f4e9;
   border-radius: 10px;
   padding: 17px 20px;
-  font-size: 12px;
+  font-size: 16px;
   line-height: 1.7;
 }
 .local-ai-help summary {
@@ -2068,13 +2068,13 @@ input[type="checkbox"] {
   color: #36583f;
 }
 .local-ai-help p {
-  font-size: 12px;
+  font-size: 16px;
 }
 .local-ai-help li {
   margin: 10px 0;
 }
 .local-ai-help code {
-  font-size: 11px;
+  font-size: 14px;
   overflow-wrap: anywhere;
 }
 .local-ai-help a {
@@ -2124,3 +2124,47 @@ input[type="checkbox"] {
 @media (max-width: 600px) {
   .button.guide-launcher { font-size: 18px; padding: 14px 18px; }
 }
+
+/* Shared readable surfaces and a distinct, welcoming Guide. */
+:root { font-size:18px; }
+body { line-height:1.6; }
+p { color:var(--muted); }
+.ecosystem { background:#17243b; color:#f1f5ff; height:auto; min-height:36px; padding-block:7px; font-size:14px; }
+header { height:auto; min-height:84px; padding-block:12px; background:#fff; gap:24px; }
+nav { font-size:16px; gap:20px; flex-wrap:wrap; }
+nav button { color:#39465a; }
+.brand { font-size:21px; }
+.brand small { font-size:12px; letter-spacing:2px; }
+.eyebrow { color:#47566e; }
+.button { font-size:16px; font-weight:600; }
+input, textarea, select { font-size:16px; color:#202b3c; }
+.workspace-heading, .page-heading { margin-bottom:30px; }
+.workflow-rail { color:#39465a; }
+.guide-panel { width:min(480px,calc(100vw - 32px)); background:#fff; border-color:#dce0f2; box-shadow:0 15px 60px #17243b30; }
+.guide-header { background:#eef0ff; padding:18px 20px; }
+.guide-header strong { font-size:20px; font-weight:700; color:#342b67; }
+.guide-header small { font-size:14px; color:#465469; }
+.guide-avatar { font-size:26px; background:#fff; width:44px; height:44px; }
+.guide-header > button { min-width:44px; min-height:44px; }
+.guide-content { overscroll-behavior:contain; }
+.guide-disclosure { background:#f3f5fa; color:#465469; }
+.guide-disclosure p, .guide-panel form label, .context-control { font-size:14px; color:#465469; }
+.guide-prompts button { font-size:16px; color:#27354a; min-height:48px; }
+.chat-message { background:#f0effc; padding:18px; }
+.chat-message.you { background:#f1f4f8; }
+.chat-message small { font-size:12px; color:#535c75; letter-spacing:.6px; }
+.chat-message p, .guide-reply { font-size:18px; line-height:1.65; color:#263248; overflow-wrap:anywhere; }
+.guide-reply p { white-space:pre-wrap; color:inherit; margin:12px 0; }
+.guide-reply ol, .guide-reply ul { padding-left:24px; margin:12px 0; }
+.guide-reply li { margin:8px 0; }
+.guide-panel textarea { font-size:17px; min-height:80px; }
+.button.guide-launcher { background:linear-gradient(120deg,#5034a5,#17647a); color:#fff; font-size:19px; font-weight:700; border-color:#5034a5; }
+@media(min-width:1200px) { body:has(.guide-panel) main, body:has(.guide-panel) footer { margin-right:510px; } body:has(.guide-panel) .workspace-layout { grid-template-columns:1fr; } body:has(.guide-panel) .workflow-rail { display:none; } }
+@media(max-width:1199px) { .guide-panel { width:min(560px,calc(100vw - 24px)); right:12px; top:12px; bottom:12px; box-shadow:0 0 0 100vmax #17243b55,0 15px 50px #17243b30; } }
+@media(max-width:700px) { header { gap:14px; } nav { gap:14px; width:100%; } .ecosystem { font-size:14px; } .ecosystem div { gap:12px; flex-wrap:wrap; } .guide-content { padding:16px; } .guide-panel { border-radius:12px; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
+.workflow-rail, .workflow-rail p, .workflow-rail li, .readiness-checks, .file-meta, .family-status, .scene-body dt, .scene-top, .official-link, .context-control { color:#465469; }
+.chat-message.notice { background:#fff3dc; }
+.family-welcome, .folder-drop { background:#fff; }
+footer { background:#eef1f6; color:#344258; }
+.checklist, .checklist > span { color:#465469; }

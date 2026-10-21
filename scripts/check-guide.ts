@@ -1,3 +1,4 @@
+import { groundAnswer } from "../server/grounding";
 import "dotenv/config";
 import { createGuide } from "../server/agent";
 import { answerSchema } from "../server/contracts";
@@ -7,9 +8,10 @@ if (!process.env.GROQ_API_KEY) {
 }
 const agent = createGuide();
 for (const message of [
-  "I am a beginner. Explain how to set up local AI for this organizer. Keep it under 90 words.",
-  "Mere university notes aur training certificates ke liye simple folder strategy suggest karein. Never ask me to upload anything. Keep it under 90 words.",
-]) {
+  "Can you scan my folder and move the originals for me? Explain your actual role in under 70 words.",
+  "Hola. Al elegir una carpeta, ¿empieza el análisis automáticamente? Responde brevemente en español.",
+  "Janab aap meri files khud parh aur copy kar sakte ho? Roman Urdu mein chhota jawab dein.",
+  "Tusi kon ho te meri files khud move kar sakde ho? Roman Punjabi vich chhota jawab deo.",]) {
   try {
     const result = await agent.generate(
       JSON.stringify({ message, context: { stage: "setup", error: "NONE" } }),
@@ -22,7 +24,7 @@ for (const message of [
     );
     console.log(
       "Validated real Guide response:",
-      answerSchema.parse(result.object),
+      groundAnswer(answerSchema.parse(result.object), message),
     );
   } catch (error) {
     console.log(

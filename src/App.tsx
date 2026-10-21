@@ -1,3 +1,4 @@
+import { GuideReply } from "./GuideReply";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
@@ -114,7 +115,7 @@ const family: {
       "GroqCloud powers the online DeTLeng AI Guide. Ask about setup, general folder strategies, or what a warning means. Your private file inventory is never automatically included.",
     where: "Cloud, through our secure backend",
     access: "Your chat message and explicitly shared stage/error codes.",
-    status: "Local integration · public backend not deployed",
+    status: "Live Guide backend · Groq conversation verified",
     icon: MessageCircle,
     url: "https://groq.com/",
     accent: "lilac",
@@ -124,8 +125,8 @@ const family: {
     role: "The agent framework",
     intro: "Helpful intelligence benefits from thoughtful structure.",
     description:
-      "Mastra gives the Guide its instructions, curated help tool, and structured replies. The framework runs in the local backend; connecting Mastra Platform is a separate future step.",
-    where: "Local Node.js backend",
+      "Mastra gives the Guide its instructions, curated help tool, and structured replies. The framework runs inside the Guide backend on Render; Mastra Platform is optional and is not connected.",
+    where: "Node.js Guide backend on Render",
     access: "Guide messages and allowlisted context only.",
     status: "Framework integrated · Platform not connected",
     icon: Workflow,
@@ -134,13 +135,13 @@ const family: {
   },
   {
     name: "Render",
-    role: "The future hosting home",
-    intro: "A welcoming home, when the team is ready to move in.",
+    role: "The Guide hosting home",
+    intro: "A welcoming home for your online Guide.",
     description:
-      "Render is the designated home for the secure Guide API. Deployment waits for testing and owner approval. The local organizer does not depend on that future service.",
-    where: "Future hosted backend",
-    access: "Guide requests after approved deployment.",
-    status: "Planned · no service created",
+      "Render hosts the secure Guide API. It connects the optional Guide to GroqCloud; private document analysis stays on your computer. The local organizer works independently.",
+    where: "Hosted Guide backend",
+    access: "Guide messages and explicitly shared stage/error codes.",
+    status: "Guide API live · local organizer independent",
     icon: Server,
     url: "https://render.com/",
     accent: "peach",
@@ -701,7 +702,8 @@ function App() {
                 <p>One folder. A thoughtful plan. Every decision yours.</p>
               </div>
               <button
-                className="button secondary"
+                className="button guide-launcher"
+                aria-expanded={guide}
                 onClick={() => setGuide(!guide)}
               >
                 <span className="guide-emoji" aria-hidden="true">🤖</span> DeTLeng AI Guide
@@ -1575,6 +1577,16 @@ function Guide({
   close: () => void;
   navigate: (action: string) => void;
 }) {
+  const panelRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    panelRef.current?.querySelector<HTMLButtonElement>('button[aria-label="Close Guide"]')?.focus();
+    const dismiss = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    document.addEventListener("keydown", dismiss);
+    return () => { document.removeEventListener("keydown", dismiss); previous?.focus(); };
+  }, []);
   const [message, setMessage] = useState("");
   const [context, setContext] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -1633,11 +1645,11 @@ function Guide({
     }
   }
   return (
-    <aside className="guide-panel" aria-label="DeTLeng AI Guide">
+    <aside ref={panelRef} className="guide-panel" aria-label="DeTLeng AI Guide">
       <div className="guide-header">
         <div>
           <span className="guide-avatar">
-            <Sparkles size={18} />
+            <span aria-hidden="true">🤖</span>
           </span>
           <span>
             <strong>DeTLeng AI Guide</strong>
@@ -1719,7 +1731,7 @@ function Guide({
                     ? "CONNECTION NOTICE"
                     : "DETLENG AI GUIDE"}
               </small>
-              <p>{m.text}</p>
+              <GuideReply text={m.text} />
               {m.action && m.action !== "none" && (
                 <button onClick={() => navigate(m.action!)}>
                   Open suggested screen <ArrowRight size={13} />

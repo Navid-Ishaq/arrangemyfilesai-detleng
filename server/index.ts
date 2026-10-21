@@ -1,3 +1,4 @@
+import { groundAnswer } from "./grounding";
 import "dotenv/config";
 import { createApp } from "./app";
 import { createGuide } from "./agent";
@@ -14,7 +15,7 @@ const app = createApp(async (message, context, history) => {
       abortSignal: AbortSignal.timeout(30000),
     },
   );
-  return result.object;
+  return groundAnswer(answerSchema.parse(result.object), message);
 });
 const port = Number(process.env.PORT) || 3001;
 const server = app.listen(
