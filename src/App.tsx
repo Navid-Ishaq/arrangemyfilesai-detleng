@@ -1,3 +1,7 @@
+import { suggestImage } from "./images";
+import { isImage, workflowComplete } from "./domain";
+import { VISION_MODEL } from "./ollama";
+import { visionProbe } from "./vision-probe";
 import { GuideReply } from "./GuideReply";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -189,6 +193,9 @@ function App() {
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
   const [ready, setReady] = useState(false);
+  const [visionReady, setVisionReady] = useState(false);
+  const [visionStatus, setVisionStatus] = useState("Not checked");
+  const [hasConnected, setHasConnected] = useState(false);
   const [checks, setChecks] = useState([false, false, false]);
   const [errorCode, setErrorCode] = useState("NONE");
   const [filter, setFilter] = useState("all");
@@ -250,27 +257,53 @@ function App() {
     );
   }
   async function checkAI() {
-    setBusy("Checking local AI…");
+    setBusy("Checking local AI...");
     setChecks([false, false, false]);
     setReady(false);
+    setVisionReady(false);
+    setVisionStatus("Checking...");
     setNotice("");
     try {
       const list = await models();
-      setChecks([true, false, false]);
-      if (!list.some((m) => m.name === MODEL))
-        throw new LocalAIError(
-          "MODEL_MISSING",
-          "The required local model is not installed.",
+      setChecks([true, list.some((m) => m.name === MODEL), false]);
+      let textOK = false;
+      if (list.some((m) => m.name === MODEL)) {
+        try {
+          await readiness();
+          textOK = true;
+          setReady(true);
+          setChecks([true, true, true]);
+        } catch (e) {
+          report(e);
+        }
+      } else
+        setNotice(
+          "Text model missing. Run ollama pull qwen3:4b. Vision can still be checked.",
         );
-      setChecks([true, true, false]);
-      await readiness();
-      setChecks([true, true, true]);
-      setReady(true);
-      setErrorCode("NONE");
-      setNotice(
-        "Real Qwen3 4B inference returned a valid structured response. Local AI is ready.",
-      );
+      if (list.some((m) => m.name === VISION_MODEL)) {
+        try {
+          await visionProbe();
+          setVisionReady(true);
+          setVisionStatus("Ready - real vision inference verified");
+          setHasConnected(true);
+        } catch {
+          setVisionStatus(
+            "Installed, but inference failed. Check memory and retry; text analysis remains independent.",
+          );
+        }
+      } else
+        setVisionStatus(
+          "Missing - run ollama pull qwen3-vl:4b. Text analysis remains available.",
+        );
+      if (textOK) {
+        setHasConnected(true);
+        setErrorCode("NONE");
+        setNotice(
+          "Local AI Ready - text inference verified. Vision status is shown separately.",
+        );
+      }
     } catch (e) {
+      setVisionStatus("Connection unavailable");
       report(e);
     } finally {
       setBusy("");
@@ -324,19 +357,40 @@ function App() {
     try {
       for (const current of entries) {
         if (abort.current.signal.aborted) break;
-        let updated = { ...current, approved: false };
+        let updated = {
+          ...current,
+          approved: false,
+          suggestion: undefined,
+          title: "",
+          category: "",
+          subcategory: "",
+          warning: undefined,
+        } as Entry;
         if (!supported.has(extension(current.name))) {
           updated.status = "unsupported";
           updated.warning = "Unsupported format; file preserved.";
           setErrorCode("UNSUPPORTED");
         } else
           try {
-            const content = await extract(current.file);
+            const image = isImage(current.name);
+            if (image && !visionReady)
+              throw new Error(
+                "VISION_MODEL_MISSING: Connect and verify qwen3-vl:4b before image analysis. Text documents remain available.",
+              );
+            if (!image && !ready)
+              throw new Error(
+                "MODEL_MISSING: Connect and verify qwen3:4b before text analysis.",
+              );
+            const content = image
+              ? { text: "", warning: undefined }
+              : await extract(current.file);
             if (abort.current.signal.aborted) break;
             setBusy(
               `Analyzing ${entries.indexOf(current) + 1} of ${entries.length} locally…`,
             );
-            const result = await suggest(content.text, abort.current.signal);
+            const result = image
+              ? await suggestImage(current.file, abort.current.signal)
+              : await suggest(content.text, abort.current.signal);
             updated = {
               ...updated,
               status: "suggested",
@@ -706,14 +760,17 @@ function App() {
                 aria-expanded={guide}
                 onClick={() => setGuide(!guide)}
               >
-                <span className="guide-emoji" aria-hidden="true">🤖</span> DeTLeng AI Guide
+                <span className="guide-emoji" aria-hidden="true">
+                  🤖
+                </span>{" "}
+                DeTLeng AI Guide
               </button>
             </div>
             <div className="workspace-layout">
               <aside className="workflow-rail">
                 <div className="rail-label">YOUR WORKFLOW</div>
                 {[
-                  "Connect local AI",
+                  "Connect & Verify Local AI",
                   "Choose a folder",
                   "Analyze documents",
                   "Review your plan",
@@ -723,10 +780,12 @@ function App() {
                     key={s}
                     className={
                       "rail-step " +
-                      ((i === 0 && ready) ||
-                      (i === 1 && entries.length) ||
-                      (i === 2 && suggested.length) ||
-                      (i === 4 && manifest)
+                      (workflowComplete(
+                        i,
+                        ready || visionReady,
+                        entries,
+                        manifest?.results,
+                      )
                         ? "done"
                         : "")
                     }
@@ -749,11 +808,11 @@ function App() {
                   <div>
                     <span className="label">LOCAL AI</span>
                     <h3>
-                      {ready
-                        ? "Ready to think locally."
+                      {ready || visionReady
+                        ? "Local AI Ready"
                         : "A quick check before we begin."}
                     </h3>
-                    <p>Ollama + Qwen3 4B · your computer</p>
+                    <p>Text: qwen3:4b | Vision: qwen3-vl:4b | your computer</p>
                   </div>
                   <Button secondary onClick={checkAI} disabled={!!busy}>
                     {busy.includes("Checking") ? (
@@ -761,13 +820,13 @@ function App() {
                     ) : (
                       <Monitor size={16} />
                     )}{" "}
-                    {ready ? "Check again" : "Check local AI"}
+                    {hasConnected ? "Restart Connection" : "Connect Local AI"}
                   </Button>
                   <div className="checklist">
                     {[
                       "Service reachable",
-                      "Model installed",
-                      "Real inference verified",
+                      "Text model installed",
+                      "Text inference verified",
                     ].map((c, i) => (
                       <span key={c} className={checks[i] ? "checked" : ""}>
                         {checks[i] ? (
@@ -779,8 +838,15 @@ function App() {
                       </span>
                     ))}
                   </div>
+                  <p className="vision-status" role="status">
+                    <strong>Vision - qwen3-vl:4b:</strong> {visionStatus}
+                  </p>
+                  <p>
+                    Restart Connection only rechecks the local API; it never
+                    restarts Ollama.
+                  </p>
                 </div>
-                {!ready && (
+                {!ready && !visionReady && (
                   <LocalAIHelp
                     expanded={[
                       "OLLAMA_UNREACHABLE",
@@ -892,7 +958,9 @@ function App() {
                       <div className="actions">
                         <Button
                           secondary
-                          disabled={!ready || !!busy || !!manifest}
+                          disabled={
+                            (!ready && !visionReady) || !!busy || !!manifest
+                          }
                           onClick={analyze}
                         >
                           <Sparkles size={16} /> Analyze locally
@@ -1395,9 +1463,10 @@ function App() {
                 <h2>Bring your local AI.</h2>
                 <p>
                   Use a current Windows desktop Chrome or Edge browser. Install
-                  Ollama, then download Qwen3 4B. The model download is
-                  approximately 2.5 GB; runtime memory needs are higher and
-                  depend on context size. Speed varies by hardware.
+                  Ollama, then download qwen3:4b for text and qwen3-vl:4b for
+                  JPG/JPEG/PNG images. The text model download is approximately
+                  2.5 GB; runtime memory needs are higher and depend on context
+                  size. Speed varies by hardware.
                 </p>
                 <a
                   className="official-link"
@@ -1461,15 +1530,15 @@ function App() {
                 <span className="label">04 · UNDERSTAND THE BOUNDARIES</span>
                 <h2>Private documents. Optional online help.</h2>
                 <p>
-                  TXT, Markdown, DOCX, text PDFs, CSV, XLSX and PPTX are
-                  supported. Initial limits: 250 files, 20 MB per file, 14,000
-                  extracted characters. Large PDFs and workbooks are sampled.
-                  Warnings identify partial content.
+                  TXT, Markdown, DOCX, text PDFs, CSV, XLSX, PPTX, JPG, JPEG and
+                  PNG are supported. Initial limits: 250 files, 20 MB per file,
+                  14,000 extracted characters. Large PDFs and workbooks are
+                  sampled. Warnings identify partial content.
                 </p>
                 <p>
-                  OCR, legacy DOC/XLS, and encrypted documents are not
-                  supported. Models can misunderstand documents; review every
-                  suggestion.
+                  Scanned-PDF OCR, legacy DOC/XLS, and encrypted documents are
+                  not supported. Models can misunderstand documents; review
+                  every suggestion.
                 </p>
                 <p>
                   The optional Guide sends your messages to GroqCloud. App
@@ -1580,12 +1649,17 @@ function Guide({
   const panelRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    panelRef.current?.querySelector<HTMLButtonElement>('button[aria-label="Close Guide"]')?.focus();
+    panelRef.current
+      ?.querySelector<HTMLButtonElement>('button[aria-label="Close Guide"]')
+      ?.focus();
     const dismiss = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
     document.addEventListener("keydown", dismiss);
-    return () => { document.removeEventListener("keydown", dismiss); previous?.focus(); };
+    return () => {
+      document.removeEventListener("keydown", dismiss);
+      previous?.focus();
+    };
   }, []);
   const [message, setMessage] = useState("");
   const [context, setContext] = useState(false);

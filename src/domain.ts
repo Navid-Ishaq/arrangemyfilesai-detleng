@@ -31,6 +31,9 @@ export const supported = new Set([
   "pdf",
   "xlsx",
   "pptx",
+  "jpg",
+  "jpeg",
+  "png",
 ]);
 export const extension = (name: string) =>
   name.includes(".") ? name.slice(name.lastIndexOf(".") + 1).toLowerCase() : "";
@@ -87,4 +90,28 @@ export function validatePlan(entries: Entry[]): Map<string, string> {
       for (const id of ids)
         errors.set(id, "Duplicate destination. Edit the name or folder.");
   return errors;
+}
+
+export const isImage = (name: string) =>
+  ["jpg", "jpeg", "png"].includes(extension(name));
+export function workflowComplete(
+  index: number,
+  ready: boolean,
+  entries: Entry[],
+  results: { status: string }[] = [],
+): boolean {
+  const copied = results.some(
+    (r) => r.status === "copied" && results.length > 0,
+  );
+  const approved = entries.filter((e) => e.approved);
+  const reviewed = approved.length > 0 && validatePlan(entries).size === 0;
+  return (
+    [
+      ready,
+      entries.length > 0,
+      entries.some((e) => e.status === "suggested") || copied,
+      reviewed || copied,
+      copied,
+    ][index] ?? false
+  );
 }

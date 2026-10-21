@@ -83,6 +83,33 @@ async function setup() {
   return { source, out, e };
 }
 describe("copy-first operation and verified rollback", () => {
+  it.each(["jpg", "jpeg", "png"])(
+    "copies approved %s bytes without changing originals",
+    async (ext) => {
+      const { source, out, e } = await setup();
+      source.children.delete("old.txt");
+      const name = `photo.${ext}`;
+      const f = await source.getFileHandle(name, { create: true });
+      f.data = new File([new Uint8Array([137, 80, 78, 71, 0, 255])], name, {
+        lastModified: 1000,
+      });
+      const file = await f.getFile();
+      const imageEntry = { ...e, name, path: name, file, size: file.size };
+      const result = await copyApproved(
+        handle(source),
+        handle(out),
+        [imageEntry],
+        () => {},
+      );
+      expect(result.manifest.results[0].status).toBe("copied");
+      expect(result.manifest.results[0].destination).toBe(
+        `Notes/New title.${ext}`,
+      );
+      expect(new Uint8Array(await (await f.getFile()).arrayBuffer())).toEqual(
+        new Uint8Array(await file.arrayBuffer()),
+      );
+    },
+  );
   it("copies approved bytes and preserves originals", async () => {
     const { source, out, e } = await setup();
     const result = await copyApproved(
