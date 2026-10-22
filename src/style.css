@@ -2181,3 +2181,8 @@ footer { background:#eef1f6; color:#344258; }
 .drop-zone { transition: border-color .15s, background-color .15s, box-shadow .15s; }
 .drop-zone.drag-active { border: 2px solid #6050c7; background: #eeebff; box-shadow: 0 0 0 5px #6050c71a; }
 .quick-naming-note { max-width: 48rem; margin: 0 auto 1.5rem; color: #344464; font-weight: 600; }
+
+.folder-rules { flex-basis:100%; width:100%; }
+.folder-rules summary { cursor:pointer; font-weight:600; padding:.75rem 0; }
+.folder-rules textarea { width:100%; margin-top:.6rem; font:inherit; font-size:1rem; line-height:1.6; }
+.coverage-note { padding:.75rem 1rem; color:#344464; background:#f1f4fa; font-size:.9rem; }

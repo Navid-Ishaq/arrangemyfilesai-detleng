@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
 import { safeSegment, destination, validatePlan, Entry } from "../src/domain";
-import { suggestionSchema } from "../src/ollama";
+import { suggestionSchema } from "../src/suggestion-schema";
 import { createApp } from "../server/app";
 const entry = (id: string, title: string): Entry => ({
   id,

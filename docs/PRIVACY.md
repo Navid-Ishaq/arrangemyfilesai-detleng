@@ -1,13 +1,11 @@
 # Product privacy boundaries
 
-Document extraction and Qwen inference take place in the browser/loopback Ollama workflow. Contents are bounded and kept in runtime memory, not uploaded to the Guide. Application state is not saved to localStorage, IndexedDB, or a server. Browser handles/files remain governed by browser permissions. Development sandbox checks deliberately create synthetic data in origin-private browser storage.
+Document organization runs in local browser code and a parser worker. It uses selected filenames, document metadata/headings/opening content and literal keyword rules. No Ollama, local model, AI inference endpoint or cloud document fallback is used. Current inventory/review/cache stays in memory. Folder rules can be explicitly saved on this browser in localStorage; no document data is saved there. Restore default rules removes this local rule configuration. Development checks write only synthetic browser-owned OPFS data.
 
-GroqCloud Guide is optional and explicitly online. It receives user chat text, up to four bounded recent chat messages, and opt-in stage/error codes. Strict validation rejects additional context properties. Users must avoid placing private document content or secrets in their chat messages. There is no claim that free text can be perfectly sanitized.
+The optional online GroqCloud Guide receives user-written chat, bounded recent chat history and explicitly opted-in stage/error enums. No filenames, paths, inventories, extracted text, file handles or raw diagnostics are automatically attached. Users should not paste private information into chat. Free text cannot be perfectly sanitized.
 
-Server uses no chat database, file tools, document routes, content logging or tracing. Mastra logging is disabled. No server-side folder reading or Ollama proxy is included. The backend has no document inventory connection. UI navigation recommendations use a strict enum and require a click in the client. They cannot authorize file operations.
+The Guide backend uses Mastra with logging disabled. There is no chat database, document upload route or filesystem tool. Guide navigation suggestions cannot authorize file operations, and Guide failure never blocks organization.
 
-Guide failure never blocks local analysis, authored help, the family tour, or the synthetic demo. API errors are returned as curated messages rather than raw provider responses.
+Only approved copies are written to a separately selected output session. Source documents are never intentionally changed. The local manifest contains relative paths and hashes; treat it as private. Rollback verifies outputs before removing only unchanged generated copies. Reload loses in-memory handles and edits; the output manifest remains on disk for manual recovery.
 
-Only approved file copies are written to a new session in a separately authorized output. Original files are never intentionally changed. Manifest includes relative source/destination paths and hashes, stored in the output directory and optionally downloaded by the user. Treat manifests as private local records.
-
-Dependencies, fonts, and app assets are local to the build. External ecosystem and official-resource links open only when clicked. No analytics, remote font requests or cloud document fallback are included.
+App assets/readers/fonts are bundled locally. External ecosystem links open when clicked. No analytics or remote-font dependency is included. Network requests needed to load the website/assets are distinct from optional online Guide chat.

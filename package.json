@@ -10,7 +10,6 @@
     "start": "tsx server/index.ts",
     "test": "vitest run",
     "fixtures": "tsx scripts/fixtures.ts",
-    "check:ollama": "tsx scripts/check-ollama.ts",
     "check:guide": "tsx scripts/check-guide.ts"
   },
   "dependencies": {

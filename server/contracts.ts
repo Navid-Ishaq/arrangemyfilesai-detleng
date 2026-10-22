@@ -51,11 +51,11 @@ export const answerSchema = z
   .strict();
 export const help: Record<string, string> = {
   OLLAMA_UNREACHABLE:
-    "Start Ollama on Windows. Check http://127.0.0.1:11434. For a browser connection, allow only the app origin using OLLAMA_ORIGINS and restart Ollama. Browser Local Network Access permission may also be required.",
+    "The organizer no longer requires Ollama or a local AI model. Refresh the website, choose documents, and use Build organization plan.",
   MODEL_MISSING:
-    "Install the local model with ollama pull qwen3:4b. Then run the app readiness check.",
+    "The organizer no longer requires Ollama or a local AI model. Refresh the website, choose documents, and use Build organization plan.",
   INFERENCE_FAILED:
-    "Confirm qwen3:4b is installed and sufficient memory is available. Retry one short document. A readiness badge requires a validated inference response.",
+    "The organizer no longer requires Ollama or a local AI model. Refresh the website, choose documents, and use Build organization plan.",
   PERMISSION_DENIED:
     "Choose the folder again using the browser picker. Reading and output writing require separate permissions. Use Chrome or Edge on Windows.",
   UNSUPPORTED:
@@ -70,5 +70,5 @@ export const help: Record<string, string> = {
     "The file or expanded Office archive exceeds a safety limit. Choose a smaller document or skip it.",
   EMPTY:
     "No readable text was found. Skip this file or check it manually; a filename cannot establish its content.",
-  NONE: "Choose a folder, scan documents, run local analysis, review and edit suggestions, then explicitly approve copying to a separate output folder.",
+  NONE: "Choose documents, use Build organization plan, review and edit suggestions, then explicitly approve copying to a separate output folder.",
 };

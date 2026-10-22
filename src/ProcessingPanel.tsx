@@ -37,12 +37,12 @@ export function ProcessingPanel({
           {run.active
             ? run.stage
             : run.completed < run.total
-              ? "Analysis stopped"
-              : "Local analysis finished"}
+              ? "Planning stopped"
+              : "Organization plan finished"}
         </strong>
         {run.active && cancel && (
           <button className="button secondary" onClick={cancel}>
-            Cancel analysis
+            Cancel planning
           </button>
         )}
       </div>
@@ -63,7 +63,7 @@ export function ProcessingPanel({
       )}
       <small>
         {run.active
-          ? "Local model loading and document analysis can take longer on CPU. Remaining time is not yet reliably predictable."
+          ? "Local document readers build a plan without AI requests. A reader that exceeds 8 seconds is stopped so other files can continue."
           : "Completed suggestions remain available for your review. No originals were changed."}
       </small>
     </section>

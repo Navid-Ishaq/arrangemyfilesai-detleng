@@ -38,7 +38,7 @@ it("retains supported document formats and removes vision UI and transport", () 
   ]);
   const app = readFileSync(new URL("../src/App.tsx", import.meta.url), "utf8");
   const transport = readFileSync(
-    new URL("../src/ollama.ts", import.meta.url),
+    new URL("../src/analysis-engine.ts", import.meta.url),
     "utf8",
   );
   expect(app).toContain("Not supported in this release—original preserved");

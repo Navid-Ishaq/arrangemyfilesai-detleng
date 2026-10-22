@@ -1,27 +1,32 @@
-# Document-only release performance
+# Deterministic organizer performance — 22 October 2026
 
-Connection checks local API/model availability without loading a model. Real inference is verified by the first successful document analysis.
+The organizer no longer calls a language model. It preserves descriptive filenames, extracts title/heading/opening evidence for generic names, and applies literal keyword rules. The online Guide is independent help only.
 
-Successful reviewed suggestions are retained when retrying. SHA-256 caching reuses exact duplicate document results within the current inventory (64 results maximum, memory only). Failures are not cached; new folder selection clears the cache.
+## Final measured browser run
 
-The progress panel shows measured elapsed time, current stage and processed/reused counts. It does not promise an ETA. Cancellation aborts the active request.
+| Synthetic batch | Organization plan | Copy + verification + read-back | Verified | Failed |
+|---|---:|---:|---:|---:|
+| 100 varied files | 2.143 s | 5.171 s | 100 | 0 |
+| 500 varied files | 6.506 s | 21.783 s | 500 | 0 |
 
-A prior controlled warm text benchmark with six files / two unique contents measured 27.7 seconds without reuse versus 11.4 seconds with reuse. This is not a guarantee for unique documents or other hardware.
+Both batches contained unique TXT, MD, CSV, DOCX, PDF, XLSX and PPTX files. Names/content varied; file generation was excluded from timing. Known titles and categories matched expected results in every generated fixture. This is **not** a real-world accuracy rate: fixtures deliberately contain clear title evidence and known keyword rules. No AI requests occurred. The same browser/parser worker may have warmed caches between batches.
 
-JPG, JPEG and PNG analysis was removed following owner acceptance testing: a five-file mixed workload took 613 seconds. Vision is outside this release scope. No private file data is sent to cloud AI for organization.
+Planning used the actual browser worker and production readers. Copying used the production copyApproved implementation to write actual files and operation manifests in browser-owned OPFS. Each copy was SHA-256 verified and reopened to confirm presence/size. Native destination-picker permissions, physical disk/NAS/cloud-sync performance, full review-list rendering overhead and arbitrary private archives are not represented by these timings.
 
-## Long-document and copy correction
+An earlier run of the same controlled suite measured 6.350 s / 7.414 s for planning; 100 verified copies took 6.195 s. Report the final recorded complete run above, not a universal latency promise. Timing evidence is saved in the task outputs as deterministic-benchmark.txt and deterministic-benchmark.png.
 
-Owner acceptance: five real Word documents took 475 seconds versus 43 seconds for twelve small fixture entries. File size on disk is not the amount of extracted text. Long inputs reached the previous 14,000-character inference limit; fixtures did not represent that workload.
+## Boundaries and protections
 
-Quick naming now uses at most 3,600 opening characters; PDFs read only the first 2 pages. Word uses opening extracted text, slides the first 4 slides, workbooks first 2 sheets / 12 rows. Context is 4,096 tokens and output budget 220 tokens with a concise reason. Sampled documents retain a visible warning and require individual review; the app does not claim a full-document analysis.
+- Up to 1,000 files, 12 nested levels, 20 MB per file and 60 MB expanded Office limit.
+- No AI setup/loading/inference delay. Filename rules can avoid content reading altogether.
+- PDF first 2 pages; Word title metadata/styled headings/opening text; slides first 4; workbooks first 2 sheets and 12 rows. At most 3,600 opening characters for keyword decisions.
+- One parser worker is reused. The 8-second file deadline terminates the worker; the next file starts a new worker. Cancellation terminates current parsing. Unit tests inject a stuck worker and verify deadline/recovery.
+- The snapshot cache is inventory-scoped and includes filename and rule policy. Unlike old AI inference caching, separate files are not assumed to share a title merely because their bytes match.
+- Unknown/corrupt documents keep original names with visible review warnings. Images remain unsupported. Rules do not provide semantic understanding or OCR.
+- Copy/rollback tests cover source changes, approval, path safety, conflicts and retaining modified outputs. A hash-verified copy is the success criterion, not a confirmation dialog.
 
-Step 1 now completes on confirmed service/model availability. Inference verification remains separately displayed after an actual successful request.
+## Reproduce
 
-The old individual-file picker was preview-only (no source directory handle), which disabled copying. Individual selections now support hash-verified copies of the selected File snapshots into a fresh output session. Folder selections still reopen and revalidate source files and reject overlapping output folders. Browser output-directory support is required. Original files are never overwritten.
+Run npm.cmd run dev, open the local site, choose Quick Guide and Run organizer benchmark (development only). This creates synthetic browser-private storage, not files in the owner's folders. Run npm.cmd test and npm.cmd run build for automated regression/build checks.
 
-Copy errors now include the actual failure message and the finished notice gives verified/failed counts and output session location. A confirmation dialog alone is never reported as success. Owner screenshots of the Word batch show zero approvals; the bulk safe-selection action intentionally skips sampled files. New guidance explains individual approval. The precise cause of the owner's earlier unsuccessful copy is not established without its failure result.
-
-Measured synthetic local run (same concise output/context settings): 14,000 characters took 115.0 s (97.9 s prompt evaluation, 5.9 s model loading); the 3,533-character excerpt took 17.2 s (10.5 s prompt evaluation, model already loaded). Both returned Project Planning Training Assignment / Education. Cold/warm differences are included; this is not a controlled speed guarantee for private files. Ollama reported size_vram=0 in this check. Browser connection step became rail-step done immediately on availability; dropdown synthetic selection was exercised successfully.
-
-The earlier 17.2-second representative-excerpt measurement predates the opening-only policy. It is historical evidence of prompt-length cost, not a fresh benchmark of this policy or a guarantee.
+Next acceptance work: owner-selected representative archives and native disk destinations, plus beta usability testing. Persistent session recovery, desktop packaging and broader content recognition are not implemented claims.

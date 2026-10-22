@@ -11,27 +11,14 @@ const result = {
   },
 };
 afterEach(() => vi.unstubAllGlobals());
-it("six files containing two unique contents require only two inference calls", async () => {
-  const cache = new AnalysisCache();
-  const infer = vi.fn(async () => result);
-  const files = ["A", "B", "A", "A", "B", "B"].map(
-    (text, i) => new File([text], `${i}.txt`),
-  );
-  const start = performance.now();
-  let reused = 0;
-  for (const file of files) if ((await cache.run(file, infer)).cached) reused++;
-  expect(infer).toHaveBeenCalledTimes(2);
-  expect(reused).toBe(4);
-  console.log(
-    JSON.stringify({
-      benchmark: "6 synthetic files / 2 unique contents",
-      baselineInferenceCalls: 6,
-      optimizedInferenceCalls: infer.mock.calls.length,
-      reused,
-      cacheOverheadMs: Math.round(performance.now() - start),
-      note: "Controlled work-count benchmark; not real model latency",
-    }),
-  );
+it("reuses identical file snapshots without sharing decisions across different filenames", async () => {
+  const cache = new AnalysisCache(),
+    produce = vi.fn(async () => result);
+  const file = new File(["A"], "Planning notes.txt");
+  await cache.run(file, produce);
+  expect((await cache.run(file, produce)).cached).toBe(true);
+  await cache.run(new File(["A"], "Invoice.txt"), produce);
+  expect(produce).toHaveBeenCalledTimes(2);
 });
 it("changed content, analysis policy and failed calls are not incorrectly reused", async () => {
   const cache = new AnalysisCache();

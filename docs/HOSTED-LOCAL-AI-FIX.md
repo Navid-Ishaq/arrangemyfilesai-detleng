@@ -1,3 +1,5 @@
+> Historical investigation of the removed Ollama implementation. Not setup instructions for the current deterministic organizer. See README.md.
+
 # Hosted local AI connection incident — 21 October 2026
 
 ## Verified cause

@@ -21,7 +21,7 @@ export type Entry = {
   category: string;
   subcategory: string;
 };
-export const MAX_FILES = 250;
+export const MAX_FILES = 1000;
 export const MAX_BYTES = 20 * 1024 * 1024;
 export const MAX_TEXT = 14000;
 export const supported = new Set([

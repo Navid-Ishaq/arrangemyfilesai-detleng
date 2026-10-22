@@ -1,4 +1,3 @@
-import { documentSample } from "./document-sample";
 import {
   extension,
   supported,
@@ -6,40 +5,34 @@ import {
   type Entry,
   type Suggestion,
 } from "./domain";
-import { extract } from "./extract";
-import { suggest, MODEL } from "./ollama";
+import { workerPlan } from "./planner-worker-client";
+import { DEFAULT_RULES, parseRules, type FolderRule } from "./naming";
 export type AnalysisResult = {
   suggestion: Suggestion;
   warning?: string;
   coverage?: string;
 };
-// Inventory-scoped, bounded memory only. No private content or results persisted.
+// Object-identity cache scoped to the current inventory. Filename/rules affect decisions.
 export class AnalysisCache {
-  private values = new Map<string, AnalysisResult>();
+  private values = new WeakMap<File, Map<string, AnalysisResult>>();
   clear() {
-    this.values.clear();
+    this.values = new WeakMap();
   }
   async run(
     file: File,
     produce: () => Promise<AnalysisResult>,
-    policy = "balanced",
-  ): Promise<{ value: AnalysisResult; cached: boolean }> {
+    policy = "default",
+  ) {
     if (file.size > MAX_BYTES)
       throw new Error("OVERSIZED: Maximum file size is 20 MB.");
-    const digest = await crypto.subtle.digest(
-      "SHA-256",
-      await file.arrayBuffer(),
-    );
-    const hash = Array.from(new Uint8Array(digest), (b) =>
-      b.toString(16).padStart(2, "0"),
-    ).join("");
-    const key = `${MODEL}:v4:${extension(file.name)}:${policy}:${hash}`;
-    const existing = this.values.get(key);
+    const key = `${file.name}:${policy}`;
+    const existing = this.values.get(file)?.get(key);
     if (existing) return { value: structuredClone(existing), cached: true };
-    const value = await produce(); // failed analyses are never cached
-    if (this.values.size >= 64)
-      this.values.delete(this.values.keys().next().value!);
-    this.values.set(key, structuredClone(value));
+    const value = await produce();
+    const row = this.values.get(file) || new Map<string, AnalysisResult>();
+    if (row.size >= 4) row.delete(row.keys().next().value!);
+    row.set(key, structuredClone(value));
+    this.values.set(file, row);
     return { value, cached: false };
   }
 }
@@ -51,30 +44,22 @@ export async function analyzeFile(
   cache: AnalysisCache,
   signal: AbortSignal,
   stage: (value: string) => void,
+  rules: FolderRule[] = parseRules(DEFAULT_RULES),
 ) {
+  signal.throwIfAborted();
   if (!supported.has(extension(file.name)))
     throw new Error("Not supported in this release—original preserved");
-  stage("Checking for an identical file");
+  stage("Building a local naming and folder plan");
   return cache.run(
     file,
     async () => {
+      const value =
+        typeof Worker !== "undefined"
+          ? await workerPlan(file, rules, signal)
+          : await (await import("./planner")).planDocument(file, rules);
       signal.throwIfAborted();
-      stage("Reading document locally");
-      const content = await extract(file);
-      signal.throwIfAborted();
-      const sample = documentSample(content.text);
-      stage(
-        `Analyzing ${sample.text.length.toLocaleString()} characters locally`,
-      );
-      return {
-        suggestion: await suggest(sample.text, signal),
-        coverage: `Quick naming: ${content.coverage}; ${sample.text.length.toLocaleString()} characters used. ${sample.sampled || content.warning ? "Opening content only, not the full document. " : ""}Please review the suggested name and category.`,
-        warning:
-          sample.sampled || content.warning
-            ? "Limited opening content—please review the suggested name."
-            : undefined,
-      };
+      return value;
     },
-    "documents",
+    JSON.stringify(rules),
   );
 }

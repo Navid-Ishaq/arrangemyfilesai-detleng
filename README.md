@@ -1,98 +1,71 @@
 # Arrange My Files AI by DeTLeng
 
-**Your Files. Your Computer. Your AI.**
+A private, document-focused organizer for desktop Chrome/Edge. Organization uses local code: descriptive filenames, document titles/headings and editable folder rules. **No Ollama, Qwen, model download or AI connection is required.** The DeTLeng AI Guide is separate optional online help.
 
-A Windows desktop browser workspace for understanding documents locally, reviewing naming suggestions, and copying approved files into a separate organized output folder. The optional DeTLeng AI Guide uses GroqCloud through a secure Node.js/Mastra backend.
+## Use
 
-## Start locally
+1. Drop files or a folder, or use Add documents.
+2. Optionally edit and explicitly save Folder rules on this browser (`Folder: keyword, keyword`). Literal case-insensitive keyword matches are scored; most matches wins, and rule order resolves ties with a review warning.
+3. Build organization plan. Useful names are preserved; generic names use available title/heading evidence. Rows explain the evidence used.
+4. Review/edit and select approved rows. Conflicting destinations must be edited before copying. Rebuild all with current rules explicitly clears previous edits/approvals.
+5. Choose output & copy. A separate unique output session contains category folders and operation-manifest.json. Copies are SHA-256 verified; originals are untouched.
 
-Requires Node.js 24, current Chrome/Edge, Ollama, and `qwen3:4b`.
+## Run locally
 
-```powershell
-npm ci
-npm run fixtures
-npm run dev
-```
-
-Open http://127.0.0.1:5173. In a second terminal, optionally start the Guide:
+Requires Node.js 24 and current desktop Chrome/Edge; HTTPS or trusted localhost for folder writing.
 
 ```powershell
-Copy-Item .env.example .env
-# Edit .env privately and set GROQ_API_KEY. Never paste the key into chat.
-npm run dev:api
+npm.cmd ci
+npm.cmd run dev
 ```
 
-Do not overwrite an existing `.env`. The secret file is ignored by Git. Restart the API after changing it. `GROQ_MODEL` is configurable; no automatic model or paid fallback is enabled.
-
-Install local AI:
+Open http://127.0.0.1:5173. For tests/build:
 
 ```powershell
-ollama pull qwen3:4b
-ollama run qwen3:4b
+npm.cmd test
+npm.cmd run build
 ```
 
-Use **Check local AI** in the app. A reachable server or installed model alone does not mark inference ready. Download is roughly 2.5 GB; actual runtime RAM/VRAM and speed depend on hardware/context. Qwen3-4B's upstream licence is Apache 2.0; see the [official model card](https://huggingface.co/Qwen/Qwen3-4B).
+Optional synthetic fixture generation: `npm.cmd run fixtures`. Use the generated `work/fixtures` folder and separate `work/output`; never test on private backups. In development, Quick Guide exposes synthetic browser checks and the 100/500-file acceptance benchmark. The benchmark writes only browser-owned synthetic OPFS data, not personal folders. It is excluded from production UI.
+
+## What the engine actually does
+
+- Preserves descriptive filenames, including useful existing document names.
+- Extracts Word title metadata / Title or Heading styles, PDF title metadata / opening text, workbook sheet names, slide titles and opening text lines for generic names.
+- Rules classify filenames and bounded opening evidence; a clear filename rule skips unnecessary content reading.
+- Unknown titles retain the original name with a review warning. This is deterministic evidence extraction, not semantic understanding of arbitrary documents.
+- One reusable parser worker keeps the interface responsive. An 8-second reader deadline and cancellation terminate the worker; later files can continue. Cancellation cannot undo an already approved copy run.
+- Inventory-scoped File snapshot caching avoids unnecessary re-reading. Rules and filenames are part of the cache key; no private results are persisted or sent to a model.
+
+## Supported formats / limits
+
+TXT, MD, CSV, DOCX, text-based PDF, XLSX and PPTX. Up to 1,000 inventoried files, 12 subfolder levels, 20 MB per file; expanded Office archive ceiling 60 MB. Content evidence is bounded to 3,600 opening characters after extraction (14,000-character extraction ceiling).
+
+PDF: first 2 pages. Word: opening paragraphs and title/heading evidence; reliable page boundaries are unavailable. PPTX: first 4 slides. XLSX: first 2 sheets, up to 12 opening rows per sheet; formulas are not recalculated. ZIP-based Word/slide extraction skips unrelated payloads while checking expanded archive limits.
+
+JPG/JPEG/PNG content recognition, scanned-PDF OCR, encrypted files and legacy DOC/XLS reading are not supported. Unreadable supported documents can retain their original names for manually reviewed organization by name/type. Images are shown as unsupported and are never analyzed or copied by the organizer.
+
+Large documents, damaged containers and slow disks can take longer. Benchmark results are controlled examples, not performance guarantees or proof of naming accuracy on personal archives.
+
+## Safety / recovery
+
+Read permission and output writing are separate explicit actions. Folder mode rejects source/output overlap, reopens source files and checks for changes. Individual selections copy the selected File snapshots into a fresh session. Existing destination files are never intentionally overwritten. Conflicts block approval/copy.
+
+The manifest records the plan and each completed/failed copy, including hashes. A manifest write failure stops the run. Rollback in the open session deletes only generated copies whose hashes still match; modified outputs and originals are retained. Reload loses in-memory handles, review edits and rollback access; the saved manifest supports manual recovery. Interrupted writes can leave partial outputs; filesystem writes are not transactional. Persistent session recovery and desktop packaging remain future work, not implemented claims.
+
+## Optional AI Guide
+
+Start `npm.cmd run dev:api` only if online help is wanted. Set GROQ_API_KEY privately in the ignored .env file; do not overwrite an existing .env. Production frontend uses VITE_GUIDE_API_URL. Render/Groq/Mastra account setup is unchanged. Updated Guide product facts require backend redeployment to reach the live Guide.
+
+Only user chat text, bounded recent history and opt-in stage/error enums reach GroqCloud via the Node/Mastra backend. No document names, paths, inventory, handles, excerpts or files are automatically attached. Do not paste sensitive information into chat. The organizer works without the Guide/API.
 
 ## Architecture
 
-- `src/domain.ts`: deterministic naming, extension preservation, reserved names, path limits and collision validation.
-- `src/extract.ts`: lazy browser-side TXT/MD/CSV, DOCX, PDF, XLSX and PPTX extraction. No document upload.
-- `src/ollama.ts`: fixed loopback endpoint, `qwen3:4b`, non-thinking structured inference and Zod validation.
-- `src/files.ts`: recursive inventory, explicit approvals, source-change checks, copy-first operation, SHA-256 verification, local manifest and verified rollback.
-- `src/App.tsx`: workspace, review, setup, offline synthetic demo, AI Family, cloud Guide UI.
-- `server/agent.ts`: Mastra agent `detleng-ai-guide`, Groq model configuration, curated troubleshooting tool.
-- `server/app.ts`: strict request contracts, CORS, request limits, rate limits, global daily cap, concurrency cap, sanitized error handling. No chat persistence or content logging.
-- `src/BrowserChecks.tsx`: development-only real browser OPFS tests. Never accesses personal folders.
+`naming.ts` — deterministic title/category decisions and literal rule validation.
+`extract.ts` — bounded local readers; no file upload.
+`planner.ts` / `planner.worker.ts` / `planner-worker-client.ts` — planning and worker lifecycle/deadline.
+`analysis-engine.ts` — inventory cache and orchestration; no AI dependencies.
+`files.ts` / `domain.ts` — inventory, approval/path validation, verified copy and rollback.
+`server/` — optional help-only cloud Guide, contracts, CORS and request/resource controls.
 
-The organizer works independently of the Guide. All cloud requests use a separate endpoint. Browser sends only user-written messages, bounded recent chat history, and opt-in stage/error enums. Filenames, paths, excerpts, inventories, file handles and raw diagnostics are never automatically attached. User-written messages can contain sensitive information: the interface warns users to keep private information out.
-
-## Browser permissions and troubleshooting
-
-`showDirectoryPicker` requires a supported secure context (HTTPS or trusted local development). Use current Chrome/Edge on Windows. Folder selection is an explicit user action. Read-only inventory precedes separately authorized output writing. Restricted system folders may be denied. Mobile/unsupported browsers can explore the tour/demo and use individual file selection where available. Copying selected file snapshots requires a browser with output-directory writing support.
-
-For browser-to-Ollama requests, allow the exact frontend origin using `OLLAMA_ORIGINS`, then restart Ollama. Local development uses `http://127.0.0.1:5173`. Future public use requires the HTTPS custom origin. Browser Local Network Access permission may also apply. Do not expose Ollama to the public internet or configure wildcard origins. For local-only Ollama, set `OLLAMA_NO_CLOUD=1` and restart it. No automatic OS/network configuration changes are made by this app.
-
-## Safety and recovery
-
-Choose a small synthetic folder first (`work/fixtures`, created by `npm run fixtures`). Use `work/output` as a separate output destination. Never test against the owner's Coursera backup without separate authorization.
-
-The app creates a unique `.arrangemyfiles-<uuid>` output session. The source and output must be separate (neither contains the other). Names/extensions are validated in deterministic code; AI cannot execute file operations. Selected conflicts block copying. Every planned operation is recorded, and each completed/failed result is written into `operation-manifest.json`. Copies are hash-verified; originals are never moved or deleted. Editing a suggestion clears its individual approval.
-
-Rollback is available while the run remains in this browser session. It verifies each output's SHA-256 hash before deleting only unchanged generated copies. Changed outputs are retained. It retains the manifest and empty folders as recovery evidence. Reloading loses handle/state access: use the output manifest for manual recovery. Interrupted or failed writes can leave a partial/untracked output; inspect it manually rather than deleting it automatically. Filesystem writes are not transactional; external concurrent changes cannot be completely excluded.
-
-## Limits
-
-- 250 inventoried files; 12 subfolder levels; 20 MB per file; expanded Office archive ceiling 60 MB.
-- At most 14,000 characters extracted per document; local inference receives at most 3,600 characters with opening excerpts. Sampling is visibly flagged. PDFs: first 2 pages only. XLSX: first 2 sheets and 12 rows per sheet. PPTX: first 4 slides. Word has no reliable page boundaries: opening extracted text is used. Partial extraction is flagged.
-- No OCR, encrypted document support, legacy DOC/XLS or automatic move/delete.
-- PPTX extracts slide text, not images, notes, or charts. XLSX uses values/cached formula results and does not calculate formulas. Complex layouts can affect reading order.
-- Sequential local inference; cancellation aborts the active request. Closing/reloading the page loses unsaved suggestions.
-- AI can misinterpret documents. Suggested categories may need manual consolidation. Readiness is a point-in-time check.
-- Guide history is in browser memory only and recent messages are resent for conversation continuity. Closing the Guide clears it.
-- API limits are per process, reset on restart, and do not establish a provider billing guarantee. CORS does not stop non-browser abuse. Public deployment needs owner review of quotas, proxy behavior and exposure controls.
-
-## Verification
-
-```powershell
-npm test
-npm run build
-npm run check:ollama
-```
-
-In development, Quick Guide → Developer verification → Run synthetic browser checks tests real OPFS copy/rollback and all fixture formats. This does not verify a native desktop folder permission dialog. Complete the native picker/manual checklist in `docs/TESTING.md` before public readiness.
-
-Dependencies are bundled into the frontend; no remote scripts, fonts or analytics are used. Document libraries load only when needed. `npm audit --omit=dev` currently reports moderate transitive advisories in Mammoth's CLI dependency chain and ExcelJS's UUID dependency; no high/critical finding was reported during the initial implementation. See `docs/TESTING.md` for the assessment.
-
-## Deployment boundary
-
-No push or external deployment is part of local development. Existing repository/CNAME identity is preserved. Frontend build goes to `dist`; Guide runs separately on Node. See `docs/DEPLOYMENT.md` and the prepared `render.yaml`. Do not connect Mastra Platform, create Render services, modify DNS, enable billing or alter other projects without owner approval.
-
-## Live website connection troubleshooting
-
-If Check local AI reports a network failure on the public domain, see docs/HOSTED-LOCAL-AI-FIX.md. The inline Windows setup panel and public/connect-local-ai.cmd helper configure only the official website origin. Restart Ollama after the setting changes. Folder permission and local AI permission are independent.
-
-## Document-only release
-
-Supported: TXT, MD, CSV, DOCX, XLSX, PPTX and text-based PDF. JPG/JPEG/PNG images are not supported in this release; mixed folders retain them as unsupported, with originals preserved. Scanned PDFs without readable text are unsupported. Only qwen3:4b is required. No vision model or image analysis controls are included.
-
-Drag files or folders into the workspace (supported desktop Chrome/Edge), or use the browse menu. Drops only read inventory; choose Analyze locally and explicitly approve before copying. Unsupported folder-drop browsers show a browse fallback message. Limits remain 250 files / 12 folder levels. Quick naming is an opening-content estimate, not full-document classification.
+See docs/PERFORMANCE.md for measured results and benchmark limitations.

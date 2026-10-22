@@ -10,7 +10,11 @@ const destroy = vi.hoisted(() => vi.fn());
 vi.mock("pdfjs-dist", () => ({
   GlobalWorkerOptions: {},
   getDocument: () => ({
-    promise: Promise.resolve({ numPages: 2500, getPage: pages }),
+    promise: Promise.resolve({
+      numPages: 2500,
+      getMetadata: async () => ({ info: { Title: "Study planning notes" } }),
+      getPage: pages,
+    }),
     destroy,
   }),
 }));

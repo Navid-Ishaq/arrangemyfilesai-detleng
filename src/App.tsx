@@ -1,10 +1,11 @@
+import { DEFAULT_RULES, parseRules } from "./naming";
 import { captureDrop } from "./drop-files";
 import { AnalysisCache, analysisQueue, analyzeFile } from "./analysis-engine";
 import { ProcessingPanel, type RunProgress } from "./ProcessingPanel";
 import { analysisWarning } from "./analysis-errors";
 import { isImage, workflowComplete } from "./domain";
 import { GuideReply } from "./GuideReply";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -46,12 +47,17 @@ import {
   destination,
 } from "./domain";
 import { inventory, copyApproved, rollback, Manifest } from "./files";
-import { models, MODEL, LocalAIError, connectionMessage } from "./ollama";
-import { LocalAIHelp } from "./LocalAIHelp";
 import { sampleDocuments, demoRows } from "./samples";
 import { BrowserChecks } from "./BrowserChecks";
 import { guideEndpoint } from "./guide-client";
 import { answerSchema } from "../server/contracts";
+const OrganizerBenchmark = import.meta.env.DEV
+  ? lazy(() =>
+      import("./OrganizerBenchmark").then((module) => ({
+        default: module.OrganizerBenchmark,
+      })),
+    )
+  : () => null;
 type Page = "home" | "organize" | "family" | "demo" | "help";
 const links = [
   ["DeTLeng", "https://www.detleng.com/"],
@@ -79,29 +85,29 @@ const family: {
   accent: string;
 }[] = [
   {
-    name: "Ollama",
-    role: "The local AI engine",
+    name: "Local Organizer",
+    role: "The organization engine",
     intro: "Every thoughtful team needs a place to think.",
     description:
-      "Ollama makes a home for AI models on your computer. It runs the model that helps understand your documents, without needing a cloud document service.",
+      "Local code preserves useful filenames, extracts document titles and applies consistent folder rules. It needs no AI model or account.",
     where: "Your computer",
-    access: "Extracted text sent locally by the organizer.",
-    status: "Visitor readiness checked in Organizer",
+    access: "Only the files you select; no document network requests.",
+    status: "Available immediately in your browser",
     icon: Monitor,
-    url: "https://ollama.com/download/windows",
+    url: "https://github.com/Navid-Ishaq/arrangemyfilesai-detleng",
     accent: "mint",
   },
   {
-    name: "Qwen3 4B",
-    role: "The document intelligence",
+    name: "Document Readers",
+    role: "The evidence readers",
     intro: "A little clarity for those mysterious filenames.",
     description:
-      "Qwen reads the extracted text and proposes a meaningful title and category. It offers an interpretation for you to review; it never independently controls your files.",
-    where: "Locally, through Ollama",
+      "Document readers extract title metadata, headings and opening text. Naming rules use this evidence; missing titles keep the original name.",
+    where: "Inside a local browser worker",
     access: "Bounded extracted text; no independent folder access.",
-    status: "Requires installed model and inference check",
+    status: "No model installation required",
     icon: Sparkles,
-    url: "https://ollama.com/library/qwen3:4b",
+    url: "https://github.com/Navid-Ishaq/arrangemyfilesai-detleng",
     accent: "peach",
   },
   {
@@ -189,9 +195,18 @@ function App() {
   const [run, setRun] = useState<RunProgress>();
   const [dragActive, setDragActive] = useState(false);
   const [allowSnapshotCopy, setAllowSnapshotCopy] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [hasConnected, setHasConnected] = useState(false);
-  const [checks, setChecks] = useState([false, false, false]);
+  const [ruleText, setRuleText] = useState(() => {
+    try {
+      const saved = localStorage.getItem("arrangemyfiles-folder-rules");
+      if (saved) {
+        parseRules(saved);
+        return saved;
+      }
+    } catch {
+      /* use defaults when storage is unavailable */
+    }
+    return DEFAULT_RULES;
+  });
   const [errorCode, setErrorCode] = useState("NONE");
   const [filter, setFilter] = useState("all");
   const [manifest, setManifest] = useState<Manifest>();
@@ -225,17 +240,6 @@ function App() {
           ? "choose"
           : "setup";
   function report(e: unknown) {
-    if (e instanceof LocalAIError) {
-      setErrorCode(
-        e.code === "MODEL_MISSING"
-          ? "MODEL_MISSING"
-          : e.code === "INFERENCE_FAILED"
-            ? "INFERENCE_FAILED"
-            : "OLLAMA_UNREACHABLE",
-      );
-      setNotice(connectionMessage(e.code, window.location.origin));
-      return;
-    }
     const raw = e instanceof Error ? e.message : "";
     const code =
       ["MODEL_MISSING", "INFERENCE_FAILED", "OLLAMA_UNREACHABLE"].find((c) =>
@@ -250,30 +254,6 @@ function App() {
         ? raw || "The operation could not finish. Your originals are preserved."
         : `${code.replaceAll("_", " ")}. Open the Quick Guide for recovery steps.`,
     );
-  }
-  async function checkAI() {
-    setBusy("Checking local AI...");
-    setChecks([false, false, false]);
-    setReady(false);
-    setNotice("");
-    try {
-      const list = await models();
-      setChecks([true, list.some((m) => m.name === MODEL), false]);
-      const textOK = list.some((m) => m.name === MODEL);
-      setReady(textOK);
-      if (!textOK) setNotice("Text model missing. Run ollama pull qwen3:4b.");
-      if (textOK) {
-        setHasConnected(true);
-        setErrorCode("NONE");
-        setNotice(
-          "Local models detected. Inference is verified during your first analysis; no model is loaded just to connect.",
-        );
-      }
-    } catch (e) {
-      report(e);
-    } finally {
-      setBusy("");
-    }
   }
   function dropDocuments(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();
@@ -316,7 +296,7 @@ function App() {
       setManifest(undefined);
       setOutDir(undefined);
       setNotice(
-        `${result.entries.length} files inventoried. Nothing changed.${result.limited ? " Inventory limit reached (250 files / 12 levels). Choose a smaller folder." : ""}`,
+        `${result.entries.length} files inventoried. Nothing changed.${result.limited ? " Inventory limit reached (1,000 files / 12 levels). Choose a smaller folder." : ""}`,
       );
     } catch (e) {
       if ((e as DOMException).name !== "AbortError") report(e);
@@ -346,11 +326,26 @@ function App() {
     setManifest(undefined);
     setOutDir(undefined);
     setNotice(
-      "Synthetic files loaded in browser memory. Analyze them with real local Qwen. Copying these samples is disabled; use the generated fixture folder for copy tests.",
+      "Synthetic files loaded in browser memory. Build a local rule-based plan. Copying these samples is disabled; use the generated fixture folder for copy tests.",
     );
   }
-  async function analyze() {
-    const queue = analysisQueue(entries);
+  async function analyze(rebuild = false) {
+    let rules;
+    try {
+      rules = parseRules(ruleText);
+    } catch (error) {
+      report(error);
+      return;
+    }
+    if (
+      rebuild &&
+      approved.length &&
+      !window.confirm(
+        "Rebuild all proposals with current rules? Existing edits and approvals will be cleared.",
+      )
+    )
+      return;
+    const queue = rebuild ? entries : analysisQueue(entries);
     if (!queue.length) {
       setNotice(
         "Existing successful suggestions are preserved. Only failed or unprocessed files need analysis.",
@@ -404,33 +399,29 @@ function App() {
           setErrorCode("UNSUPPORTED");
         } else
           try {
-            if (!ready)
-              throw new Error(
-                "MODEL_MISSING: Connect and verify qwen3:4b before text analysis.",
-              );
             const analyzed = await analyzeFile(
               current.file,
               analysisCache.current,
               abort.current.signal,
               (stage) => setRun((old) => old && { ...old, stage }),
+              rules,
             );
             if (abort.current.signal.aborted) break;
             reused = analyzed.cached;
             const content = { warning: analyzed.value.warning };
             const result = analyzed.value.suggestion;
-            if (!analyzed.cached) setChecks([true, true, true]);
             updated = {
               ...updated,
               status: "suggested",
               suggestion: result,
               coverage: analyzed.value.coverage,
               title: result.title,
-              category: result.needsReview ? "Needs Review" : result.category,
-              subcategory: result.needsReview ? "" : result.subcategory,
+              category: result.category,
+              subcategory: result.subcategory,
               warning:
                 content.warning ||
                 (result.needsReview
-                  ? "AI flagged this interpretation for your review."
+                  ? "Please review this rule-based suggestion."
                   : undefined),
             };
           } catch (e) {
@@ -466,8 +457,8 @@ function App() {
       }
       setNotice(
         abort.current.signal.aborted
-          ? "Analysis stopped. Completed suggestions are available."
-          : "Analysis finished. Review the names and categories, then select the files you approve.",
+          ? "Planning stopped. Completed suggestions are available."
+          : "Plan finished. Review the evidence, names and categories, then select the files you approve.",
       );
     } finally {
       setBusy("");
@@ -628,8 +619,8 @@ function App() {
                   Give them a name—and a place—that makes sense.
                 </p>
                 <p className="muted hero-description">
-                  Understand, review, and organize your files with AI that runs
-                  on your computer. Thoughtful suggestions. Every decision
+                  Understand, review, and organize your files with local
+                  document readers and folder rules. Fast plans. Every decision
                   yours.
                 </p>
                 <div className="actions">
@@ -667,13 +658,14 @@ function App() {
                     </div>
                     <strong>Project Planning Notes.pdf</strong>
                     <div className="folder-label">
-                      <FolderOpen size={15} /> Learning / Project Management
+                      <FolderOpen size={15} /> Study & Learning / Project
+                      Management
                     </div>
                     <div className="paper-bottom">
                       <span>
                         <Check size={14} /> Ready for your review
                       </span>
-                      <span className="tiny-avatar">AI</span>
+                      <span className="tiny-avatar">LOCAL</span>
                     </div>
                   </div>
                 </div>
@@ -701,13 +693,13 @@ function App() {
                 <Monitor />
                 <span>
                   <strong>Your computer.</strong>
-                  <small>Powered by Ollama + Qwen3 4B.</small>
+                  <small>Local rules. No model downloads.</small>
                 </span>
               </div>
               <div>
                 <Heart />
                 <span>
-                  <strong>Your AI.</strong>
+                  <strong>Your control.</strong>
                   <small>Helpful suggestions. Human control.</small>
                 </span>
               </div>
@@ -735,7 +727,7 @@ function App() {
                   {
                     n: "02",
                     title: "Let clarity take shape",
-                    body: "Local AI suggests descriptive names and useful categories from document text.",
+                    body: "Document titles and clear folder rules create a local plan for your review.",
                     icon: Sparkles,
                   },
                   {
@@ -813,9 +805,9 @@ function App() {
               <aside className="workflow-rail">
                 <div className="rail-label">YOUR WORKFLOW</div>
                 {[
-                  "Connect Local AI",
-                  "Choose a folder",
-                  "Analyze documents",
+                  "Choose documents",
+                  "Set folder rules",
+                  "Build organization plan",
                   "Review your plan",
                   "Copy approved files",
                 ].map((s, i) => (
@@ -823,7 +815,12 @@ function App() {
                     key={s}
                     className={
                       "rail-step " +
-                      (workflowComplete(i, ready, entries, manifest?.results)
+                      (workflowComplete(
+                        i,
+                        entries.length > 0,
+                        entries,
+                        manifest?.results,
+                      )
                         ? "done"
                         : "")
                     }
@@ -842,64 +839,90 @@ function App() {
                 </div>
               </aside>
               <div className="workspace-content">
-                <div className="setup-card">
+                <section
+                  className="setup-card"
+                  aria-label="Local organizer engine"
+                >
                   <div>
-                    <span className="label">LOCAL AI</span>
-                    <h3>
-                      {checks[2]
-                        ? "Local AI Ready"
-                        : hasConnected
-                          ? "Local models connected"
-                          : "A quick check before we begin."}
-                    </h3>
-                    <p>qwen3:4b · document analysis on your computer</p>
-                  </div>
-                  <Button secondary onClick={checkAI} disabled={!!busy}>
-                    {busy.includes("Checking") ? (
-                      <LoaderCircle className="spin" size={16} />
-                    ) : (
-                      <Monitor size={16} />
-                    )}{" "}
-                    {hasConnected ? "Restart Connection" : "Connect Local AI"}
-                  </Button>
-                  <div className="checklist">
-                    {[
-                      "Service reachable",
-                      "Text model installed",
-                      "Text inference verified",
-                    ].map((c, i) => (
-                      <span key={c} className={checks[i] ? "checked" : ""}>
-                        {checks[i] ? (
-                          <CheckCircle2 size={14} />
-                        ) : (
-                          <span className="hollow" />
-                        )}
-                        {c}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="notice" role="note">
-                    <strong>Documents only.</strong> Supports DOCX, XLSX, PPTX,
-                    text-based PDF, CSV, TXT and MD. JPG, JPEG and PNG images
-                    are not supported in this release. Originals are preserved.
-                    Scanned PDFs without readable text are not supported.
+                    <span className="label">PRIVATE LOCAL ORGANIZER</span>
+                    <h3>Ready. No AI setup required.</h3>
+                    <p>
+                      Keep useful filenames. Recover titles from document
+                      headings. Sort with consistent keyword rules.
+                    </p>
                   </div>
                   <p>
-                    This checks that Ollama and qwen3:4b are available on your
-                    computer. The first analysis verifies inference. You can
-                    choose files before connecting; connect before analyzing.
-                    Restart Connection only rechecks the API.
+                    Files stay on your computer. No Ollama, model downloads or
+                    cloud requests are used to build your organization plan. The
+                    AI Guide is separate help only.
                   </p>
-                </div>
-                {!ready && (
-                  <LocalAIHelp
-                    expanded={[
-                      "OLLAMA_UNREACHABLE",
-                      "MODEL_MISSING",
-                      "INFERENCE_FAILED",
-                    ].includes(errorCode)}
-                  />
-                )}
+                  <details className="folder-rules">
+                    <summary>
+                      Folder rules · customize categories and keywords
+                    </summary>
+                    <label>
+                      One rule per line: Folder: keyword, keyword
+                      <textarea
+                        aria-label="Folder rules"
+                        rows={6}
+                        value={ruleText}
+                        disabled={!!busy || !!manifest}
+                        onChange={(event) => setRuleText(event.target.value)}
+                      />
+                    </label>
+                    <div className="actions">
+                      <button
+                        className="text-button"
+                        disabled={!!busy || !!manifest}
+                        onClick={() => {
+                          try {
+                            parseRules(ruleText);
+                            localStorage.setItem(
+                              "arrangemyfiles-folder-rules",
+                              ruleText,
+                            );
+                            setNotice(
+                              "Folder rules saved on this browser only. No document data was saved.",
+                            );
+                          } catch (error) {
+                            report(error);
+                          }
+                        }}
+                      >
+                        Save rules on this browser
+                      </button>
+                      <button
+                        className="text-button"
+                        disabled={!!busy || !!manifest}
+                        onClick={() => {
+                          setRuleText(DEFAULT_RULES);
+                          try {
+                            localStorage.removeItem(
+                              "arrangemyfiles-folder-rules",
+                            );
+                          } catch {}
+                          setNotice(
+                            "Default rules restored. Rebuild the plan to apply them.",
+                          );
+                        }}
+                      >
+                        Restore default rules
+                      </button>
+                    </div>
+                    <p>
+                      Literal keywords only. Most matched keywords wins; ties
+                      use the first rule. Unmatched documents use a file-type
+                      folder. Edited rules apply to new/retried files; choose
+                      “Rebuild all with current rules” to update existing
+                      proposals.
+                    </p>
+                  </details>
+                  <p>
+                    Supported: DOCX, text PDFs, XLSX, PPTX, TXT, MD, CSV. Images
+                    and scanned PDFs have no content recognition in this
+                    release.
+                  </p>
+                </section>
                 {!supportedBrowser && (
                   <div className="notice">
                     Folder operations require a supported desktop browser in a
@@ -941,7 +964,7 @@ function App() {
                   <p>
                     {entries.length
                       ? `${entries.length} files in this inventory. Originals untouched.`
-                      : "Drag documents here, or browse below. Analysis starts only when you choose Analyze locally."}
+                      : "Drag documents here, or browse below. Analysis starts only when you choose Build organization plan."}
                   </p>
                   <div className="actions">
                     <label className="selection-menu">
@@ -982,7 +1005,7 @@ function App() {
                           setRun(undefined);
                           const files = Array.from(
                             event.target.files || [],
-                          ).slice(0, 250);
+                          ).slice(0, 1000);
 
                           setEntries(
                             files.map((file) => ({
@@ -1052,10 +1075,10 @@ function App() {
                       <div className="actions">
                         <Button
                           secondary
-                          disabled={!ready || !!busy || !!manifest}
+                          disabled={!!busy || !!manifest}
                           onClick={() => analyze()}
                         >
-                          <Sparkles size={16} /> Analyze locally
+                          <Sparkles size={16} /> Build organization plan
                         </Button>
                         <button
                           className="icon-button"
@@ -1066,6 +1089,13 @@ function App() {
                         </button>
                       </div>
                     </div>
+                    <button
+                      className="text-button"
+                      disabled={!!busy || !!manifest}
+                      onClick={() => analyze(true)}
+                    >
+                      Rebuild all with current rules
+                    </button>
                     <div className="filters">
                       <select
                         aria-label="Filter files"
@@ -1227,7 +1257,7 @@ function App() {
                       <div className="notice" role="status">
                         Analysis is complete, but no files are approved yet.
                         Tick each reviewed file to enable copying. “Select
-                        suggestions without warnings” skips sampled documents;
+                        suggestions without warnings” skips files with warnings;
                         review and approve those individually.
                       </div>
                     )}
@@ -1448,8 +1478,7 @@ function App() {
             </p>
             <div className="notice">
               <Info size={17} /> All files and suggestions here are synthetic
-              examples. No Qwen inference or file operations take place in this
-              demo.
+              examples. No file operations take place in this demo.
             </div>
             <div className="demo-progress">
               {[
@@ -1560,56 +1589,38 @@ function App() {
               A few steps.
               <br />A clearer workspace.
             </h1>
-            <p className="lead">No accounts needed for local document AI.</p>
+            <p className="lead">
+              No account or AI installation needed for organization.
+            </p>
             <div className="help-grid">
               <article>
-                <span className="label">01 · PREPARE YOUR COMPUTER</span>
-                <h2>Bring your local AI.</h2>
+                <span className="label">01 · ADD DOCUMENTS</span>
+                <h2>Start with your files.</h2>
                 <p>
-                  Use a current Windows desktop Chrome or Edge browser. Install
-                  Ollama, then download qwen3:4b for supported documents. Images
-                  are not supported in this release. The model download is
-                  approximately 2.5 GB; runtime memory needs are higher and
-                  depend on context size. Speed varies by hardware.
+                  Use current desktop Chrome or Edge. Drop a folder or files
+                  into the workspace, or use Add documents. No Ollama, local
+                  model, or cloud AI is required. Your originals stay untouched.
                 </p>
-                <a
-                  className="official-link"
-                  href="https://ollama.com/download/windows"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Download Ollama for Windows <ArrowUpRight size={14} />
-                </a>
-                <Command text="ollama pull qwen3:4b" />
-                <Command text="ollama run qwen3:4b" />
-                <p>
-                  The first download needs internet. Local document analysis
-                  uses your installed model.
-                </p>
+                <Button onClick={() => go("organize")}>
+                  Open organizer <ArrowRight size={16} />
+                </Button>
               </article>
               <article>
-                <span className="label">02 · CHECK THE CONNECTION</span>
-                <h2>Connect quickly. Verify while you work.</h2>
+                <span className="label">02 · BUILD A LOCAL PLAN</span>
+                <h2>Evidence. Rules. Clear names.</h2>
                 <p>
-                  Select Connect Local AI to detect the service and installed
-                  models without loading them. Your first successful local
-                  analysis verifies inference separately. Restart Connection
-                  only rechecks availability.
+                  Keep descriptive filenames, recover useful titles from
+                  metadata and headings, and apply literal keyword rules to
+                  folders. Customize folder rules before building a plan.
+                  Ambiguous or unreadable documents keep their original name
+                  with a review warning.
                 </p>
                 <p>
-                  If the browser blocks the request, check its local network
-                  permission. Ollama may need the exact app origin in{" "}
-                  <code>OLLAMA_ORIGINS</code>, followed by an Ollama restart.
-                  Avoid allowing every website.
+                  PDFs use their first 2 pages; Word uses opening content,
+                  slides the first 4 slides, and spreadsheets the first 2 sheets
+                  / 12 rows. This is quick organization, not full-document
+                  understanding.
                 </p>
-                <p>
-                  For local-only Ollama use, configure{" "}
-                  <code>OLLAMA_NO_CLOUD=1</code>. The organizer uses the
-                  loopback endpoint and the local <code>qwen3:4b</code> model.
-                </p>
-                <Button secondary onClick={() => go("organize")}>
-                  Open local AI checks <ArrowRight size={16} />
-                </Button>
               </article>
               <article>
                 <span className="label">03 · REVIEW BEFORE COPYING</span>
@@ -1637,16 +1648,16 @@ function App() {
                 <p>
                   TXT, Markdown, DOCX, text-based PDFs, CSV, XLSX and PPTX are
                   supported. Images and scanned PDFs without readable text are
-                  not supported. Initial limits: 250 files, 20 MB per file, up
+                  not supported. Initial limits: 1,000 files, 20 MB per file, up
                   to 14,000 extracted characters, with a maximum 3,600-character
-                  opening excerpt sent to local AI. PDFs use only the first 2
-                  pages. Large PDFs and workbooks are sampled. Warnings identify
-                  partial content.
+                  opening excerpt checked by local naming rules. PDFs use only
+                  the first 2 pages. Large PDFs and workbooks are sampled.
+                  Warnings identify partial content.
                 </p>
                 <p>
                   Scanned-PDF OCR, legacy DOC/XLS, and encrypted documents are
-                  not supported. Models can misunderstand documents; review
-                  every suggestion.
+                  not supported. Rules and extracted titles can be imperfect;
+                  review every suggestion.
                 </p>
                 <p>
                   The optional Guide sends your messages to GroqCloud. App
@@ -1657,7 +1668,14 @@ function App() {
             </div>
           </section>
         )}
-        {import.meta.env.DEV && page === "help" && <BrowserChecks />}
+        {import.meta.env.DEV && page === "help" && (
+          <>
+            <BrowserChecks />
+            <Suspense fallback={<p>Loading development benchmark…</p>}>
+              <OrganizerBenchmark />
+            </Suspense>
+          </>
+        )}
       </main>
       <footer>
         <div>
@@ -1698,7 +1716,7 @@ function App() {
           >
             View on GitHub <ArrowUpRight size={12} />
           </a>
-          <small>Local document AI · optional cloud Guide</small>
+          <small>Local organization · optional cloud Guide</small>
         </div>
         <div className="footer-bottom">
           <span>
@@ -1857,7 +1875,7 @@ function Guide({
               (
                 {
                   setup:
-                    "Connect Ollama and verify the local model before analysis.",
+                    "Choose documents and build an organization plan; no model installation is required.",
                   choose: "Review the inventory, then start local analysis.",
                   analysis:
                     "Wait for local suggestions. You can stop the active analysis.",
@@ -1878,7 +1896,7 @@ function Guide({
         <p>Ask about setup, review warnings, or a general folder strategy.</p>
         <div className="guide-prompts">
           {[
-            "Help me set up Ollama",
+            "How do folder rules work?",
             "Suggest a folder strategy",
             "What should I do next?",
             "Explain review issues",

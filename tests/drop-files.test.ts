@@ -51,13 +51,13 @@ it("reports unsupported folder drops instead of pretending they were files", () 
     ),
   ).toThrow("Use Choose a folder");
 });
-it("caps plain file drops at 250 and reports the limit", async () => {
+it("caps plain file drops at 1000 and reports the limit", async () => {
   const files = Array.from(
-    { length: 251 },
+    { length: 1001 },
     (_, i) => new File(["text"], `${i}.txt`),
   );
   const result = await captureDrop(data([], files))();
-  expect(result.entries).toHaveLength(250);
+  expect(result.entries).toHaveLength(1000);
   expect(result.limited).toBe(true);
 });
 it("does not convert an unreadable dropped item into a guessed document", async () => {
