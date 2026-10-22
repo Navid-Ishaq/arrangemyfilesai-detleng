@@ -48,7 +48,7 @@ The organizer works independently of the Guide. All cloud requests use a separat
 
 ## Browser permissions and troubleshooting
 
-`showDirectoryPicker` requires a supported secure context (HTTPS or trusted local development). Use current Chrome/Edge on Windows. Folder selection is an explicit user action. Read-only inventory precedes separately authorized output writing. Restricted system folders may be denied. Mobile/unsupported browsers can explore the tour/demo and use file-preview selection where available.
+`showDirectoryPicker` requires a supported secure context (HTTPS or trusted local development). Use current Chrome/Edge on Windows. Folder selection is an explicit user action. Read-only inventory precedes separately authorized output writing. Restricted system folders may be denied. Mobile/unsupported browsers can explore the tour/demo and use individual file selection where available. Copying selected file snapshots requires a browser with output-directory writing support.
 
 For browser-to-Ollama requests, allow the exact frontend origin using `OLLAMA_ORIGINS`, then restart Ollama. Local development uses `http://127.0.0.1:5173`. Future public use requires the HTTPS custom origin. Browser Local Network Access permission may also apply. Do not expose Ollama to the public internet or configure wildcard origins. For local-only Ollama, set `OLLAMA_NO_CLOUD=1` and restart it. No automatic OS/network configuration changes are made by this app.
 
@@ -63,7 +63,7 @@ Rollback is available while the run remains in this browser session. It verifies
 ## Limits
 
 - 250 inventoried files; 12 subfolder levels; 20 MB per file; expanded Office archive ceiling 60 MB.
-- At most 14,000 extracted characters sent per document. PDFs: up to 35 pages. XLSX: up to five sheets and 100 rows per sheet. PPTX: up to 40 slides. Partial extraction is flagged.
+- At most 14,000 characters extracted per document; local inference receives at most 3,600 characters with representative beginning/middle/end excerpts when needed. Sampling is visibly flagged. PDFs: up to 35 pages. XLSX: up to five sheets and 100 rows per sheet. PPTX: up to 40 slides. Partial extraction is flagged.
 - No OCR, encrypted document support, legacy DOC/XLS or automatic move/delete.
 - PPTX extracts slide text, not images, notes, or charts. XLSX uses values/cached formula results and does not calculate formulas. Complex layouts can affect reading order.
 - Sequential local inference; cancellation aborts the active request. Closing/reloading the page loses unsaved suggestions.

@@ -1,3 +1,4 @@
+import { documentSample } from "./document-sample";
 import {
   extension,
   supported,
@@ -28,10 +29,10 @@ export class AnalysisCache {
     const hash = Array.from(new Uint8Array(digest), (b) =>
       b.toString(16).padStart(2, "0"),
     ).join("");
-    const key = `${MODEL}:v2:${extension(file.name)}:${policy}:${hash}`;
+    const key = `${MODEL}:v3:${extension(file.name)}:${policy}:${hash}`;
     const existing = this.values.get(key);
     if (existing) return { value: structuredClone(existing), cached: true };
-    const value = await produce(); // failures and uncertain images are never cached
+    const value = await produce(); // failed analyses are never cached
     if (this.values.size >= 64)
       this.values.delete(this.values.keys().next().value!);
     this.values.set(key, structuredClone(value));
@@ -57,10 +58,15 @@ export async function analyzeFile(
       stage("Reading document locally");
       const content = await extract(file);
       signal.throwIfAborted();
-      stage("Analyzing document locally");
+      const sample = documentSample(content.text);
+      stage(
+        `Analyzing ${sample.text.length.toLocaleString()} characters locally`,
+      );
       return {
-        suggestion: await suggest(content.text, signal),
-        warning: content.warning,
+        suggestion: await suggest(sample.text, signal),
+        warning: sample.sampled
+          ? "Representative excerpts analyzed (beginning, middle and end of extracted text). Review before approving; the full document was not analyzed."
+          : content.warning,
       };
     },
     "documents",

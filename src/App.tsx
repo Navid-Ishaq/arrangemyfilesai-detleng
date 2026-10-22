@@ -186,6 +186,7 @@ function App() {
   const [notice, setNotice] = useState("");
   const analysisCache = useRef(new AnalysisCache());
   const [run, setRun] = useState<RunProgress>();
+  const [allowSnapshotCopy, setAllowSnapshotCopy] = useState(false);
   const [ready, setReady] = useState(false);
   const [hasConnected, setHasConnected] = useState(false);
   const [checks, setChecks] = useState([false, false, false]);
@@ -273,6 +274,7 @@ function App() {
     }
   }
   async function choose() {
+    setAllowSnapshotCopy(false);
     setNotice("");
     try {
       const root = await window.showDirectoryPicker({ mode: "read" });
@@ -294,6 +296,7 @@ function App() {
     }
   }
   function loadSamples() {
+    setAllowSnapshotCopy(false);
     analysisCache.current.clear();
     setRun(undefined);
     setEntries(
@@ -460,7 +463,7 @@ function App() {
     );
   }
   async function organize() {
-    if (!source) return;
+    if (!source && !allowSnapshotCopy) return;
     try {
       const output = await window.showDirectoryPicker({ mode: "readwrite" });
       if (
@@ -473,7 +476,12 @@ function App() {
       const result = await copyApproved(source, output, entries, setManifest);
       setManifest(result.manifest);
       setOutDir(result.dir);
-      setNotice("Copy run finished. Review the operation results below.");
+      const copied = result.manifest.results.filter(
+        (r) => r.status === "copied",
+      ).length;
+      setNotice(
+        `${copied} verified copies in ${output.name}/${result.manifest.session}. ${result.manifest.results.length - copied} failed. Review the operation results below.`,
+      );
     } catch (e) {
       report(e);
     } finally {
@@ -775,7 +783,7 @@ function App() {
               <aside className="workflow-rail">
                 <div className="rail-label">YOUR WORKFLOW</div>
                 {[
-                  "Connect & Verify Local AI",
+                  "Connect Local AI",
                   "Choose a folder",
                   "Analyze documents",
                   "Review your plan",
@@ -785,12 +793,7 @@ function App() {
                     key={s}
                     className={
                       "rail-step " +
-                      (workflowComplete(
-                        i,
-                        checks[2],
-                        entries,
-                        manifest?.results,
-                      )
+                      (workflowComplete(i, ready, entries, manifest?.results)
                         ? "done"
                         : "")
                     }
@@ -852,8 +855,10 @@ function App() {
                     Scanned PDFs without readable text are not supported.
                   </div>
                   <p>
-                    Restart Connection only rechecks the local API; it never
-                    restarts Ollama.
+                    This checks that Ollama and qwen3:4b are available on your
+                    computer. The first analysis verifies inference. You can
+                    choose files before connecting; connect before analyzing.
+                    Restart Connection only rechecks the API.
                   </p>
                 </div>
                 {!ready && (
@@ -883,25 +888,38 @@ function App() {
                       : "Choose a folder from your computer or an external drive."}
                   </p>
                   <div className="actions">
-                    <Button
-                      onClick={choose}
-                      disabled={!supportedBrowser || !!busy}
-                    >
-                      Choose folder <ArrowRight size={16} />
-                    </Button>
-                    <button
-                      className="text-button"
-                      onClick={loadSamples}
-                      disabled={!!busy}
-                    >
-                      Try synthetic files
-                    </button>
+                    <label className="selection-menu">
+                      <span>Choose how to add documents</span>
+                      <select
+                        aria-label="Add documents"
+                        defaultValue=""
+                        disabled={!!busy}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          event.target.value = "";
+                          if (value === "folder") void choose();
+                          if (value === "files")
+                            document.getElementById("document-files")?.click();
+                          if (value === "samples") loadSamples();
+                        }}
+                      >
+                        <option value="" disabled>
+                          Add documents…
+                        </option>
+                        <option value="folder" disabled={!supportedBrowser}>
+                          Choose a folder
+                        </option>
+                        <option value="files">Choose individual files</option>
+                        <option value="samples">Try synthetic examples</option>
+                      </select>
+                    </label>
                     <label className="file-input-label">
-                      Select files for preview
+                      Choose individual files
                       <input
+                        id="document-files"
                         type="file"
                         multiple
-                        aria-label="Select files for preview"
+                        aria-label="Choose individual files"
                         disabled={!!busy}
                         onChange={(event) => {
                           analysisCache.current.clear();
@@ -924,11 +942,12 @@ function App() {
                               subcategory: "",
                             })),
                           );
+                          setAllowSnapshotCopy(true);
                           setSource(undefined);
                           setManifest(undefined);
                           setOutDir(undefined);
                           setNotice(
-                            "Files selected for local analysis and preview. Use Choose folder for copy operations.",
+                            "Files selected for local analysis. Review and approve suggestions before choosing an output folder.",
                           );
                         }}
                       />
@@ -1145,6 +1164,14 @@ function App() {
                           </article>
                         ))}
                     </div>
+                    {suggested.length > 0 && approved.length === 0 && (
+                      <div className="notice" role="status">
+                        Analysis is complete, but no files are approved yet.
+                        Tick each reviewed file to enable copying. “Select
+                        suggestions without warnings” skips sampled documents;
+                        review and approve those individually.
+                      </div>
+                    )}
                     <div className="copy-bar">
                       <span>
                         <ShieldCheck size={17} /> {approved.length} approved ·
@@ -1152,7 +1179,8 @@ function App() {
                       </span>
                       <Button
                         disabled={
-                          !source ||
+                          (!source && !allowSnapshotCopy) ||
+                          !supportedBrowser ||
                           !approved.length ||
                           errors.size > 0 ||
                           !!busy ||
@@ -1550,9 +1578,10 @@ function App() {
                 <p>
                   TXT, Markdown, DOCX, text-based PDFs, CSV, XLSX and PPTX are
                   supported. Images and scanned PDFs without readable text are
-                  not supported. Initial limits: 250 files, 20 MB per file,
-                  14,000 extracted characters. Large PDFs and workbooks are
-                  sampled. Warnings identify partial content.
+                  not supported. Initial limits: 250 files, 20 MB per file, up
+                  to 14,000 extracted characters, with a maximum 3,600-character
+                  representative excerpt sent to local AI. Large PDFs and
+                  workbooks are sampled. Warnings identify partial content.
                 </p>
                 <p>
                   Scanned-PDF OCR, legacy DOC/XLS, and encrypted documents are

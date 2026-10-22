@@ -14,3 +14,14 @@ it("does not run a full vision inference on connection or label installation as 
   expect(connection).not.toContain("await suggest(");
   expect(connection).not.toContain("setVisionVerified(true)");
 });
+
+it("marks the connection step from model availability while preserving separate inference verification", () => {
+  const source = readFileSync(
+    new URL("../src/App.tsx", import.meta.url),
+    "utf8",
+  );
+  expect(source).toMatch(/workflowComplete\(\s*i,\s*ready,/);
+  expect(source).toContain("Text inference verified");
+  expect(source).toContain('aria-label="Add documents"');
+  expect(source).not.toContain("!source ||");
+});

@@ -116,6 +116,14 @@ describe("copy-first operation and verified rollback", () => {
     ).toBe("original");
     expect(result.manifest.results[0].sha256).toHaveLength(64);
   });
+  it("copies individually selected snapshots into a verified output session", async () => {
+    const { source, out, e } = await setup();
+    const result = await copyApproved(undefined, handle(out), [e], () => {});
+    expect(result.manifest.results[0].status).toBe("copied");
+    expect(result.manifest.results[0].sha256).toHaveLength(64);
+    expect(await e.file.text()).toBe("original");
+    expect(source.children.has("old.txt")).toBe(true);
+  });
   it("requires approval and blocks nested output", async () => {
     const { source, out, e } = await setup();
     await expect(

@@ -109,7 +109,7 @@ async function parent(
   return { dir, name };
 }
 export async function copyApproved(
-  source: FileSystemDirectoryHandle,
+  source: FileSystemDirectoryHandle | undefined,
   output: FileSystemDirectoryHandle,
   entries: Entry[],
   notify: (m: Manifest) => void,
@@ -118,9 +118,10 @@ export async function copyApproved(
   if (!approved.length || validatePlan(entries).size)
     throw new Error("Approve valid, non-conflicting suggestions first.");
   if (
-    (await source.isSameEntry(output)) ||
-    (await source.resolve(output)) !== null ||
-    (await output.resolve(source)) !== null
+    source &&
+    ((await source.isSameEntry(output)) ||
+      (await source.resolve(output)) !== null ||
+      (await output.resolve(source)) !== null)
   )
     throw new Error(
       "Choose an output folder separate from the source and its parents/subfolders.",
@@ -155,10 +156,15 @@ export async function copyApproved(
       status: "failed",
     };
     try {
-      const currentParent = await parent(source, e.path, false);
-      const current = await (
-        await currentParent.dir.getFileHandle(currentParent.name)
-      ).getFile();
+      // File picker snapshots can be copied without a directory handle.
+      // Folder mode additionally reopens and verifies the current source.
+      let current = e.file;
+      if (source) {
+        const currentParent = await parent(source, e.path, false);
+        current = await (
+          await currentParent.dir.getFileHandle(currentParent.name)
+        ).getFile();
+      }
       if (
         current.size !== e.file.size ||
         current.lastModified !== e.file.lastModified
@@ -179,9 +185,8 @@ export async function copyApproved(
           "Copy verification failed. Output retained for inspection.",
         );
       result = { ...result, status: "copied", sha256: digest };
-    } catch {
-      result.error =
-        "Copy failed: permissions, a changed source, or a destination conflict. Original preserved.";
+    } catch (error) {
+      result.error = `${error instanceof Error ? error.message : "Copy failed"} Original preserved.`;
     }
     manifest.results.push(result);
     // Persist each result. A manifest failure stops the run instead of losing tracking.
