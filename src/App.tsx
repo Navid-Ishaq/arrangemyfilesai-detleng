@@ -1,5 +1,6 @@
+import { AnalysisCache, analysisQueue, analyzeFile } from "./analysis-engine";
+import { ProcessingPanel, type RunProgress } from "./ProcessingPanel";
 import { analysisWarning } from "./analysis-errors";
-import { suggestImage } from "./images";
 import { isImage, workflowComplete } from "./domain";
 import { VISION_MODEL } from "./ollama";
 import { GuideReply } from "./GuideReply";
@@ -45,15 +46,7 @@ import {
   destination,
 } from "./domain";
 import { inventory, copyApproved, rollback, Manifest } from "./files";
-import { extract } from "./extract";
-import {
-  models,
-  readiness,
-  suggest,
-  MODEL,
-  LocalAIError,
-  connectionMessage,
-} from "./ollama";
+import { models, MODEL, LocalAIError, connectionMessage } from "./ollama";
 import { LocalAIHelp } from "./LocalAIHelp";
 import { sampleDocuments, demoRows } from "./samples";
 import { BrowserChecks } from "./BrowserChecks";
@@ -192,6 +185,9 @@ function App() {
   const [source, setSource] = useState<FileSystemDirectoryHandle>();
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
+  const analysisCache = useRef(new AnalysisCache());
+  const [run, setRun] = useState<RunProgress>();
+  const [fullDetail, setFullDetail] = useState(false);
   const [ready, setReady] = useState(false);
   const [visionAvailable, setVisionAvailable] = useState(false);
   const [visionVerified, setVisionVerified] = useState(false);
@@ -268,20 +264,9 @@ function App() {
     try {
       const list = await models();
       setChecks([true, list.some((m) => m.name === MODEL), false]);
-      let textOK = false;
-      if (list.some((m) => m.name === MODEL)) {
-        try {
-          await readiness();
-          textOK = true;
-          setReady(true);
-          setChecks([true, true, true]);
-        } catch (e) {
-          report(e);
-        }
-      } else
-        setNotice(
-          "Text model missing. Run ollama pull qwen3:4b. Vision can still be checked.",
-        );
+      const textOK = list.some((m) => m.name === MODEL);
+      setReady(textOK);
+      if (!textOK) setNotice("Text model missing. Run ollama pull qwen3:4b.");
       if (list.some((m) => m.name === VISION_MODEL)) {
         setVisionAvailable(true);
         setHasConnected(true);
@@ -296,7 +281,7 @@ function App() {
         setHasConnected(true);
         setErrorCode("NONE");
         setNotice(
-          "Local AI Ready - text inference verified. Vision status is shown separately.",
+          "Local models detected. Inference is verified during your first analysis; no model is loaded just to connect.",
         );
       }
     } catch (e) {
@@ -313,6 +298,8 @@ function App() {
       setBusy("Reading folder inventory…");
       const result = await inventory(root);
       setSource(root);
+      analysisCache.current.clear();
+      setRun(undefined);
       setEntries(result.entries);
       setManifest(undefined);
       setOutDir(undefined);
@@ -326,6 +313,8 @@ function App() {
     }
   }
   function loadSamples() {
+    analysisCache.current.clear();
+    setRun(undefined);
     setEntries(
       sampleDocuments.map((s, i) => ({
         id: String(i),
@@ -347,13 +336,44 @@ function App() {
       "Synthetic files loaded in browser memory. Analyze them with real local Qwen. Copying these samples is disabled; use the generated fixture folder for copy tests.",
     );
   }
-  async function analyze() {
+  async function analyze(forceImages = false) {
+    const queue = analysisQueue(entries, forceImages);
+    if (!queue.length) {
+      setNotice(
+        "Existing successful suggestions are preserved. Only failed or unprocessed files need analysis.",
+      );
+      return;
+    }
+    const started = Date.now();
+    setRun({
+      started,
+      total: queue.length,
+      completed: 0,
+      failed: 0,
+      cached: 0,
+      stage: "Preparing local analysis",
+      fileStarted: started,
+      fileNumber: 1,
+      durations: [],
+      active: true,
+    });
     setBusy("Analyzing documents…");
     setNotice("");
     abort.current = new AbortController();
     try {
-      for (const current of entries) {
+      for (const current of queue) {
         if (abort.current.signal.aborted) break;
+        const fileStarted = Date.now();
+        setRun(
+          (old) =>
+            old && {
+              ...old,
+              fileStarted,
+              fileNumber: queue.indexOf(current) + 1,
+              stage: "Preparing local file",
+            },
+        );
+        let reused = false;
         let updated = {
           ...current,
           approved: false,
@@ -378,17 +398,19 @@ function App() {
               throw new Error(
                 "MODEL_MISSING: Connect and verify qwen3:4b before text analysis.",
               );
-            const content = image
-              ? { text: "", warning: undefined }
-              : await extract(current.file);
-            if (abort.current.signal.aborted) break;
-            setBusy(
-              `Analyzing ${entries.indexOf(current) + 1} of ${entries.length} locally…`,
+            const analyzed = await analyzeFile(
+              current.file,
+              analysisCache.current,
+              abort.current.signal,
+              (stage) => setRun((old) => old && { ...old, stage }),
+              fullDetail,
             );
-            const result = image
-              ? await suggestImage(current.file, abort.current.signal)
-              : await suggest(content.text, abort.current.signal);
-            if (image) {
+            if (abort.current.signal.aborted) break;
+            reused = analyzed.cached;
+            const content = { warning: analyzed.value.warning };
+            const result = analyzed.value.suggestion;
+            if (!image && !analyzed.cached) setChecks([true, true, true]);
+            if (image && !analyzed.cached) {
               setVisionVerified(true);
               setVisionStatus("Ready - real image inference verified");
             }
@@ -422,6 +444,16 @@ function App() {
             );
             updated.warning = analysisWarning(e);
           }
+        setRun(
+          (old) =>
+            old && {
+              ...old,
+              completed: old.completed + 1,
+              failed: old.failed + (updated.status === "suggested" ? 0 : 1),
+              cached: old.cached + (reused ? 1 : 0),
+              durations: [...old.durations, Date.now() - fileStarted],
+            },
+        );
         setEntries((previous) =>
           previous.map((e) => (e.id === current.id ? updated : e)),
         );
@@ -434,6 +466,7 @@ function App() {
     } finally {
       setBusy("");
       abort.current = null;
+      setRun((old) => old && { ...old, active: false });
     }
   }
   function edit(
@@ -781,7 +814,7 @@ function App() {
                       "rail-step " +
                       (workflowComplete(
                         i,
-                        ready || visionVerified,
+                        checks[2] || visionVerified,
                         entries,
                         manifest?.results,
                       )
@@ -807,9 +840,11 @@ function App() {
                   <div>
                     <span className="label">LOCAL AI</span>
                     <h3>
-                      {ready || visionVerified
+                      {checks[2] || visionVerified
                         ? "Local AI Ready"
-                        : "A quick check before we begin."}
+                        : hasConnected
+                          ? "Local models connected"
+                          : "A quick check before we begin."}
                     </h3>
                     <p>Text: qwen3:4b | Vision: qwen3-vl:4b | your computer</p>
                   </div>
@@ -840,6 +875,25 @@ function App() {
                   <p className="vision-status" role="status">
                     <strong>Vision - qwen3-vl:4b:</strong> {visionStatus}
                   </p>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={fullDetail}
+                      disabled={!!busy}
+                      onChange={(e) => setFullDetail(e.target.checked)}
+                    />{" "}
+                    Full-detail images (slower). Balanced previews leave
+                    originals untouched.
+                  </label>
+                  {fullDetail && entries.some((e) => isImage(e.name)) && (
+                    <button
+                      className="button secondary"
+                      disabled={!!busy || !!manifest || !visionAvailable}
+                      onClick={() => analyze(true)}
+                    >
+                      Reanalyze images in full detail
+                    </button>
+                  )}
                   <p>
                     Restart Connection only rechecks the local API; it never
                     restarts Ollama.
@@ -893,9 +947,12 @@ function App() {
                         aria-label="Select files for preview"
                         disabled={!!busy}
                         onChange={(event) => {
+                          analysisCache.current.clear();
+                          setRun(undefined);
                           const files = Array.from(
                             event.target.files || [],
                           ).slice(0, 250);
+
                           setEntries(
                             files.map((file) => ({
                               id: crypto.randomUUID(),
@@ -930,13 +987,19 @@ function App() {
                     {notice}
                   </div>
                 )}
-                {busy && (
+                {run && (
+                  <ProcessingPanel
+                    run={run}
+                    cancel={() => abort.current?.abort()}
+                  />
+                )}
+                {busy && !run?.active && (
                   <div role="status" className="progress">
                     <LoaderCircle className="spin" size={17} />
                     {busy}
                     {abort.current && (
                       <button onClick={() => abort.current?.abort()}>
-                        Stop after current request
+                        Cancel analysis
                       </button>
                     )}
                   </div>
@@ -960,7 +1023,7 @@ function App() {
                           disabled={
                             (!ready && !visionAvailable) || !!busy || !!manifest
                           }
-                          onClick={analyze}
+                          onClick={() => analyze()}
                         >
                           <Sparkles size={16} /> Analyze locally
                         </Button>
@@ -1484,11 +1547,12 @@ function App() {
               </article>
               <article>
                 <span className="label">02 · CHECK THE CONNECTION</span>
-                <h2>Three checks. One clear answer.</h2>
+                <h2>Connect quickly. Verify while you work.</h2>
                 <p>
-                  Open the organizer and select Check local AI. We verify the
-                  service, installed model, and an actual validated inference
-                  response separately.
+                  Select Connect Local AI to detect the service and installed
+                  models without loading them. Your first successful local
+                  analysis verifies inference separately. Restart Connection
+                  only rechecks availability.
                 </p>
                 <p>
                   If the browser blocks the request, check its local network

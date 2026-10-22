@@ -165,16 +165,44 @@ it("rejects a truncated image answer even when its partial JSON looks valid", as
   );
   vi.stubGlobal(
     "fetch",
-    vi
-      .fn()
-      .mockResolvedValue(
-        Response.json({
-          done_reason: "length",
-          message: { content: JSON.stringify(valid) },
-        }),
-      ),
+    vi.fn().mockResolvedValue(
+      Response.json({
+        done_reason: "length",
+        message: { content: JSON.stringify(valid) },
+      }),
+    ),
   );
   await expect(suggestImage(png())).rejects.toMatchObject({
     code: "OLLAMA_INVALID_RESPONSE",
   });
+});
+it("prepares a bounded image preview without writing or changing the original", async () => {
+  const original = png();
+  const originalBytes = new Uint8Array(await original.arrayBuffer());
+  vi.stubGlobal(
+    "createImageBitmap",
+    vi.fn().mockResolvedValue({ width: 3072, height: 1536, close: vi.fn() }),
+  );
+  const drawImage = vi.fn();
+  const convertToBlob = vi.fn(async () => new Blob(["preview"]));
+  const sizes: number[][] = [];
+  vi.stubGlobal(
+    "OffscreenCanvas",
+    class {
+      constructor(w: number, h: number) {
+        sizes.push([w, h]);
+      }
+      getContext() {
+        return { fillRect: vi.fn(), drawImage, fillStyle: "" };
+      }
+      convertToBlob = convertToBlob;
+    },
+  );
+  expect(await imageData(original)).toBe(btoa("preview"));
+  expect(sizes).toEqual([[1536, 768]]);
+  expect(drawImage).toHaveBeenCalledOnce();
+  expect(new Uint8Array(await original.arrayBuffer())).toEqual(originalBytes);
+  convertToBlob.mockClear();
+  await imageData(original, true);
+  expect(convertToBlob).not.toHaveBeenCalled();
 });

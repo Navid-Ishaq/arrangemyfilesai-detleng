@@ -90,10 +90,20 @@ export async function models() {
     );
   return parsed.data.models;
 }
+export type InferenceTiming = {
+  model: string;
+  totalMs: number;
+  loadMs: number;
+  promptMs: number;
+  generationMs: number;
+  inputTokens: number;
+  outputTokens: number;
+};
 export async function suggest(
   text: string,
   signal?: AbortSignal,
   image?: string,
+  onTiming?: (timing: InferenceTiming) => void,
 ): Promise<Suggestion> {
   const r = await localFetch("/api/chat", {
     method: "POST",
@@ -147,7 +157,19 @@ export async function suggest(
     const data = await r.json();
     if (data.done_reason === "length")
       throw new Error("Model exhausted its output budget.");
-    return suggestionSchema.parse(JSON.parse(data.message.content));
+    const result = suggestionSchema.parse(JSON.parse(data.message.content));
+    const ms = (value: unknown) =>
+      typeof value === "number" ? Math.round(value / 1e6) : 0;
+    onTiming?.({
+      model: image ? VISION_MODEL : MODEL,
+      totalMs: ms(data.total_duration),
+      loadMs: ms(data.load_duration),
+      promptMs: ms(data.prompt_eval_duration),
+      generationMs: ms(data.eval_duration),
+      inputTokens: data.prompt_eval_count || 0,
+      outputTokens: data.eval_count || 0,
+    });
+    return result;
   } catch {
     throw new LocalAIError(
       "OLLAMA_INVALID_RESPONSE",

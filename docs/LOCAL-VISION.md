@@ -2,7 +2,7 @@
 
 - Text documents remain on qwen3:4b. JPG/JPEG/PNG use qwen3-vl:4b over the fixed http://127.0.0.1:11434/api/chat endpoint only.
 - Browser validates extension, magic bytes, actual decoding, 20 MB input limit and 24 megapixel decoded limit. Private images are not passed to the cloud Guide.
-- Text inference is verified during connection. Vision installation is detected during connection, but real vision verification happens only after a successful user-triggered image analysis. Missing/failed vision does not disable text. Restart Connection rechecks API/models/inference only; no OS/service restart.
+- Connection detects availability only; the first successful analysis verifies inference. Vision installation is detected during connection, but real vision verification happens only after a successful user-triggered image analysis. Missing/failed vision does not disable text. Restart Connection rechecks API/models/inference only; no OS/service restart.
 - Image failure, ambiguity or invalid model JSON produces no new suggestion; previous approval and stale suggestion are cleared on analysis.
 - Existing explicit approval, separate output, hash verification and copy-only protections apply to image bytes too. The original image is copied byte-for-byte with a proposed filename; no image conversion is written to disk.
 - Review step completes when at least one valid proposed change is approved, or a manifest contains a verified copied result. Empty/failed/rolled-back-only manifests do not complete it. Copy progress also requires a copied result.
@@ -27,3 +27,5 @@ Real vision smoke test PASS: qwen3-vl:4b returned title synthetic_test_page, cat
 Real text regression smoke test PASS: qwen3:4b returned Synthetic Project Planning Notes with a valid category and needsReview=false. Final production build passed. Browser-selected image to editable review remains a manual acceptance check; no native output/copy operation was run.
 
 Performance correction: connection no longer runs an extra vision inference or loads the image model solely for setup. Image inference itself may still be slow on CPU; no latency improvement is claimed without a fresh browser timing. Tests: 68 passed; production build passed.
+
+See PERFORMANCE.md for the newer connection behavior, balanced-preview mode and measured benchmarks. Earlier full-inference connection checks have been replaced.
