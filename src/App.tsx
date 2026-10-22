@@ -1,3 +1,4 @@
+import { captureDrop } from "./drop-files";
 import { AnalysisCache, analysisQueue, analyzeFile } from "./analysis-engine";
 import { ProcessingPanel, type RunProgress } from "./ProcessingPanel";
 import { analysisWarning } from "./analysis-errors";
@@ -186,6 +187,7 @@ function App() {
   const [notice, setNotice] = useState("");
   const analysisCache = useRef(new AnalysisCache());
   const [run, setRun] = useState<RunProgress>();
+  const [dragActive, setDragActive] = useState(false);
   const [allowSnapshotCopy, setAllowSnapshotCopy] = useState(false);
   const [ready, setReady] = useState(false);
   const [hasConnected, setHasConnected] = useState(false);
@@ -271,6 +273,33 @@ function App() {
       report(e);
     } finally {
       setBusy("");
+    }
+  }
+  function dropDocuments(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    setDragActive(false);
+    if (busy || manifest) return;
+    try {
+      const read = captureDrop(event.dataTransfer);
+      setBusy("Reading dropped documents…");
+      void read()
+        .then((result) => {
+          analysisCache.current.clear();
+          setRun(undefined);
+          setEntries(result.entries);
+          setSource(result.source);
+          setAllowSnapshotCopy(!result.source);
+          setManifest(undefined);
+          setOutDir(undefined);
+          setNotice(
+            `${result.entries.length} dropped files ready. Nothing analyzed or copied yet.${result.limited ? " Inventory limit reached; choose a smaller selection." : ""}`,
+          );
+        })
+        .catch(report)
+        .finally(() => setBusy(""));
+    } catch (error) {
+      report(error);
     }
   }
   async function choose() {
@@ -394,6 +423,7 @@ function App() {
               ...updated,
               status: "suggested",
               suggestion: result,
+              coverage: analyzed.value.coverage,
               title: result.title,
               category: result.needsReview ? "Needs Review" : result.category,
               subcategory: result.needsReview ? "" : result.subcategory,
@@ -877,15 +907,41 @@ function App() {
                     can still explore the demo.
                   </div>
                 )}
-                <div className="folder-picker">
+                <div
+                  className={
+                    "folder-picker drop-zone" +
+                    (dragActive ? " drag-active" : "")
+                  }
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    if (!busy && !manifest) {
+                      event.dataTransfer.dropEffect = "copy";
+                      setDragActive(true);
+                    }
+                  }}
+                  onDragLeave={(event) => {
+                    if (
+                      !event.currentTarget.contains(event.relatedTarget as Node)
+                    )
+                      setDragActive(false);
+                  }}
+                  onDrop={dropDocuments}
+                  aria-label="Drop files or folders here"
+                >
+                  <p className="quick-naming-note">
+                    Quick naming uses the first 2 PDF pages or opening content
+                    in other documents—not the full document.
+                  </p>
                   <div className="folder-icon">
                     <FolderOpen size={31} />
                   </div>
-                  <h3>{source ? source.name : "Start with one folder."}</h3>
+                  <h3>
+                    {source ? source.name : "Drop files or a folder here."}
+                  </h3>
                   <p>
                     {entries.length
                       ? `${entries.length} files in this inventory. Originals untouched.`
-                      : "Choose a folder from your computer or an external drive."}
+                      : "Drag documents here, or browse below. Analysis starts only when you choose Analyze locally."}
                   </p>
                   <div className="actions">
                     <label className="selection-menu">
@@ -954,8 +1010,8 @@ function App() {
                     </label>
                   </div>
                   <small>
-                    Read access first. Output permission only when you approve
-                    copying.
+                    Files stay on your computer. Review suggestions before
+                    approving copies.
                   </small>
                 </div>
                 {notice && (
@@ -1155,6 +1211,9 @@ function App() {
                                   })()}
                                 </p>
                               </div>
+                            )}
+                            {e.coverage && (
+                              <p className="coverage-note">{e.coverage}</p>
                             )}
                             {(e.warning || errors.has(e.id)) && (
                               <div className="warning">
@@ -1580,8 +1639,9 @@ function App() {
                   supported. Images and scanned PDFs without readable text are
                   not supported. Initial limits: 250 files, 20 MB per file, up
                   to 14,000 extracted characters, with a maximum 3,600-character
-                  representative excerpt sent to local AI. Large PDFs and
-                  workbooks are sampled. Warnings identify partial content.
+                  opening excerpt sent to local AI. PDFs use only the first 2
+                  pages. Large PDFs and workbooks are sampled. Warnings identify
+                  partial content.
                 </p>
                 <p>
                   Scanned-PDF OCR, legacy DOC/XLS, and encrypted documents are

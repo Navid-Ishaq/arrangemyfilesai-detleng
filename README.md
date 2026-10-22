@@ -63,7 +63,7 @@ Rollback is available while the run remains in this browser session. It verifies
 ## Limits
 
 - 250 inventoried files; 12 subfolder levels; 20 MB per file; expanded Office archive ceiling 60 MB.
-- At most 14,000 characters extracted per document; local inference receives at most 3,600 characters with representative beginning/middle/end excerpts when needed. Sampling is visibly flagged. PDFs: up to 35 pages. XLSX: up to five sheets and 100 rows per sheet. PPTX: up to 40 slides. Partial extraction is flagged.
+- At most 14,000 characters extracted per document; local inference receives at most 3,600 characters with opening excerpts. Sampling is visibly flagged. PDFs: first 2 pages only. XLSX: first 2 sheets and 12 rows per sheet. PPTX: first 4 slides. Word has no reliable page boundaries: opening extracted text is used. Partial extraction is flagged.
 - No OCR, encrypted document support, legacy DOC/XLS or automatic move/delete.
 - PPTX extracts slide text, not images, notes, or charts. XLSX uses values/cached formula results and does not calculate formulas. Complex layouts can affect reading order.
 - Sequential local inference; cancellation aborts the active request. Closing/reloading the page loses unsaved suggestions.
@@ -94,3 +94,5 @@ If Check local AI reports a network failure on the public domain, see docs/HOSTE
 ## Document-only release
 
 Supported: TXT, MD, CSV, DOCX, XLSX, PPTX and text-based PDF. JPG/JPEG/PNG images are not supported in this release; mixed folders retain them as unsupported, with originals preserved. Scanned PDFs without readable text are unsupported. Only qwen3:4b is required. No vision model or image analysis controls are included.
+
+Drag files or folders into the workspace (supported desktop Chrome/Edge), or use the browse menu. Drops only read inventory; choose Analyze locally and explicitly approve before copying. Unsupported folder-drop browsers show a browse fallback message. Limits remain 250 files / 12 folder levels. Quick naming is an opening-content estimate, not full-document classification.

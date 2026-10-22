@@ -1,4 +1,4 @@
-// Bounded representative excerpts: never silently treat a sample as a full read.
+// Quick naming uses opening content only; this is not a full-document analysis.
 export const ANALYSIS_CHAR_LIMIT = 3600;
 export function documentSample(text: string): {
   text: string;
@@ -9,16 +9,8 @@ export function documentSample(text: string): {
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  if (clean.length <= ANALYSIS_CHAR_LIMIT)
-    return { text: clean, sampled: false };
-  const first = clean.slice(0, 1800);
-  const middle = clean.slice(
-    Math.floor(clean.length / 2) - 450,
-    Math.floor(clean.length / 2) + 450,
-  );
-  const end = clean.slice(-800);
   return {
-    text: `${first}\n[Middle excerpt]\n${middle}\n[End excerpt]\n${end}`,
-    sampled: true,
+    text: clean.slice(0, ANALYSIS_CHAR_LIMIT),
+    sampled: clean.length > ANALYSIS_CHAR_LIMIT,
   };
 }

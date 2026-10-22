@@ -8,7 +8,11 @@ import {
 } from "./domain";
 import { extract } from "./extract";
 import { suggest, MODEL } from "./ollama";
-export type AnalysisResult = { suggestion: Suggestion; warning?: string };
+export type AnalysisResult = {
+  suggestion: Suggestion;
+  warning?: string;
+  coverage?: string;
+};
 // Inventory-scoped, bounded memory only. No private content or results persisted.
 export class AnalysisCache {
   private values = new Map<string, AnalysisResult>();
@@ -29,7 +33,7 @@ export class AnalysisCache {
     const hash = Array.from(new Uint8Array(digest), (b) =>
       b.toString(16).padStart(2, "0"),
     ).join("");
-    const key = `${MODEL}:v3:${extension(file.name)}:${policy}:${hash}`;
+    const key = `${MODEL}:v4:${extension(file.name)}:${policy}:${hash}`;
     const existing = this.values.get(key);
     if (existing) return { value: structuredClone(existing), cached: true };
     const value = await produce(); // failed analyses are never cached
@@ -64,9 +68,11 @@ export async function analyzeFile(
       );
       return {
         suggestion: await suggest(sample.text, signal),
-        warning: sample.sampled
-          ? "Representative excerpts analyzed (beginning, middle and end of extracted text). Review before approving; the full document was not analyzed."
-          : content.warning,
+        coverage: `Quick naming: ${content.coverage}; ${sample.text.length.toLocaleString()} characters used. ${sample.sampled || content.warning ? "Opening content only, not the full document. " : ""}Please review the suggested name and category.`,
+        warning:
+          sample.sampled || content.warning
+            ? "Limited opening content—please review the suggested name."
+            : undefined,
       };
     },
     "documents",

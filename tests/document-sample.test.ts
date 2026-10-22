@@ -6,11 +6,12 @@ it("preserves short document evidence", () => {
     sampled: false,
   });
 });
-it("bounds long inputs and includes beginning middle and end evidence", () => {
+it("bounds long inputs and uses only opening evidence", () => {
   const text = "START" + "x".repeat(6995) + "MIDDLE" + "y".repeat(6994) + "END";
   const sample = documentSample(text);
   expect(sample.sampled).toBe(true);
   expect(sample.text.length).toBeLessThanOrEqual(ANALYSIS_CHAR_LIMIT);
-  for (const evidence of ["START", "MIDDLE", "END"])
-    expect(sample.text).toContain(evidence);
+  expect(sample.text).toContain("START");
+  expect(sample.text).not.toContain("MIDDLE");
+  expect(sample.text).not.toContain("END");
 });

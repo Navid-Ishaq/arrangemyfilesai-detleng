@@ -14,7 +14,7 @@ JPG, JPEG and PNG analysis was removed following owner acceptance testing: a fiv
 
 Owner acceptance: five real Word documents took 475 seconds versus 43 seconds for twelve small fixture entries. File size on disk is not the amount of extracted text. Long inputs reached the previous 14,000-character inference limit; fixtures did not represent that workload.
 
-Analysis now samples at most 3,600 characters from the beginning, middle and end of the extracted text. Context is 4,096 tokens and output budget 220 tokens with a concise reason. Sampled documents retain a visible warning and require individual review; the app does not claim a full-document analysis.
+Quick naming now uses at most 3,600 opening characters; PDFs read only the first 2 pages. Word uses opening extracted text, slides the first 4 slides, workbooks first 2 sheets / 12 rows. Context is 4,096 tokens and output budget 220 tokens with a concise reason. Sampled documents retain a visible warning and require individual review; the app does not claim a full-document analysis.
 
 Step 1 now completes on confirmed service/model availability. Inference verification remains separately displayed after an actual successful request.
 
@@ -23,3 +23,5 @@ The old individual-file picker was preview-only (no source directory handle), wh
 Copy errors now include the actual failure message and the finished notice gives verified/failed counts and output session location. A confirmation dialog alone is never reported as success. Owner screenshots of the Word batch show zero approvals; the bulk safe-selection action intentionally skips sampled files. New guidance explains individual approval. The precise cause of the owner's earlier unsuccessful copy is not established without its failure result.
 
 Measured synthetic local run (same concise output/context settings): 14,000 characters took 115.0 s (97.9 s prompt evaluation, 5.9 s model loading); the 3,533-character excerpt took 17.2 s (10.5 s prompt evaluation, model already loaded). Both returned Project Planning Training Assignment / Education. Cold/warm differences are included; this is not a controlled speed guarantee for private files. Ollama reported size_vram=0 in this check. Browser connection step became rail-step done immediately on availability; dropdown synthetic selection was exercised successfully.
+
+The earlier 17.2-second representative-excerpt measurement predates the opening-only policy. It is historical evidence of prompt-length cost, not a fresh benchmark of this policy or a guarantee.

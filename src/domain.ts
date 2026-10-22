@@ -14,6 +14,7 @@ export type Entry = {
   status: string;
   text?: string;
   warning?: string;
+  coverage?: string;
   suggestion?: Suggestion;
   approved: boolean;
   title: string;

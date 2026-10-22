@@ -1,14 +1,16 @@
 import { extension, MAX_BYTES, MAX_TEXT } from "./domain";
 export async function extract(
   file: File,
-): Promise<{ text: string; warning?: string }> {
+): Promise<{ text: string; warning?: string; coverage: string }> {
   if (file.size > MAX_BYTES)
     throw new Error("OVERSIZED: Maximum file size is 20 MB.");
   const ext = extension(file.name);
   let text = "";
   let partial = false;
+  let coverage = "Opening text";
   if (["txt", "md", "csv"].includes(ext)) text = await file.text();
   else if (ext === "docx") {
+    coverage = "Opening Word content (page boundaries are not available)";
     const mammoth = await import("mammoth/mammoth.browser");
     await checkArchive(file);
     text = (
@@ -31,7 +33,7 @@ export async function extract(
       throw error;
     });
     try {
-      for (let page = 1; page <= Math.min(doc.numPages, 35); page++) {
+      for (let page = 1; page <= Math.min(doc.numPages, 2); page++) {
         const content = await (await doc.getPage(page)).getTextContent();
         text +=
           content.items.map((i) => ("str" in i ? i.str : "")).join(" ") + "\n";
@@ -40,7 +42,8 @@ export async function extract(
           break;
         }
       }
-      partial ||= doc.numPages > 35;
+      partial ||= doc.numPages > 2;
+      coverage = `First ${Math.min(doc.numPages, 2)} PDF page(s) of ${doc.numPages}`;
     } finally {
       await task.destroy();
     }
@@ -53,12 +56,13 @@ export async function extract(
     const { default: ExcelJS } = await import("exceljs");
     const book = new ExcelJS.Workbook();
     await book.xlsx.load(await file.arrayBuffer());
-    const sheets = book.worksheets.slice(0, 5);
-    partial = book.worksheets.length > 5;
+    coverage = "First 2 sheets, up to 12 opening rows per sheet";
+    const sheets = book.worksheets.slice(0, 2);
+    partial = book.worksheets.length > 2;
     for (const sheet of sheets) {
       text += `Sheet: ${sheet.name}\n`;
       sheet.eachRow((row, n) => {
-        if (n <= 100) text += JSON.stringify(row.values) + "\n";
+        if (n <= 12) text += JSON.stringify(row.values) + "\n";
         else partial = true;
       });
     }
@@ -68,7 +72,7 @@ export async function extract(
     const slides = Object.keys(zip)
       .filter((n) => /^ppt\/slides\/slide\d+\.xml$/.test(n))
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    for (const name of slides.slice(0, 40)) {
+    for (const name of slides.slice(0, 4)) {
       const xml = new DOMParser().parseFromString(
         decoder.decode(zip[name]),
         "application/xml",
@@ -78,12 +82,14 @@ export async function extract(
           .map((n) => n.textContent)
           .join(" ") + "\n";
     }
-    partial = slides.length > 40;
+    partial = slides.length > 4;
+    coverage = `First ${Math.min(slides.length, 4)} slides`;
   } else throw new Error("UNSUPPORTED: This format is not supported.");
   if (!text.trim()) throw new Error("EMPTY: No readable text found.");
   partial ||= text.length > MAX_TEXT;
   return {
     text: text.slice(0, MAX_TEXT),
+    coverage,
     warning: partial
       ? "Partial content: text was sampled or truncated. Review the suggestion."
       : undefined,
