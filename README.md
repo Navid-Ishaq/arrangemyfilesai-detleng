@@ -90,3 +90,7 @@ No push or external deployment is part of local development. Existing repository
 ## Live website connection troubleshooting
 
 If Check local AI reports a network failure on the public domain, see docs/HOSTED-LOCAL-AI-FIX.md. The inline Windows setup panel and public/connect-local-ai.cmd helper configure only the official website origin. Restart Ollama after the setting changes. Folder permission and local AI permission are independent.
+
+## Document-only release
+
+Supported: TXT, MD, CSV, DOCX, XLSX, PPTX and text-based PDF. JPG/JPEG/PNG images are not supported in this release; mixed folders retain them as unsupported, with originals preserved. Scanned PDFs without readable text are unsupported. Only qwen3:4b is required. No vision model or image analysis controls are included.

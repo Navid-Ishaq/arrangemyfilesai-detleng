@@ -31,9 +31,6 @@ export const supported = new Set([
   "pdf",
   "xlsx",
   "pptx",
-  "jpg",
-  "jpeg",
-  "png",
 ]);
 export const extension = (name: string) =>
   name.includes(".") ? name.slice(name.lastIndexOf(".") + 1).toLowerCase() : "";
@@ -74,6 +71,10 @@ export function validatePlan(entries: Entry[]): Map<string, string> {
   const errors = new Map<string, string>();
   const paths = new Map<string, string[]>();
   for (const e of entries.filter((e) => e.approved)) {
+    if (!supported.has(extension(e.name))) {
+      errors.set(e.id, "Not supported in this release—original preserved");
+      continue;
+    }
     if (e.status !== "suggested") {
       errors.set(e.id, "This file has no validated suggestion.");
       continue;

@@ -2,7 +2,6 @@ import { AnalysisCache, analysisQueue, analyzeFile } from "./analysis-engine";
 import { ProcessingPanel, type RunProgress } from "./ProcessingPanel";
 import { analysisWarning } from "./analysis-errors";
 import { isImage, workflowComplete } from "./domain";
-import { VISION_MODEL } from "./ollama";
 import { GuideReply } from "./GuideReply";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -187,11 +186,7 @@ function App() {
   const [notice, setNotice] = useState("");
   const analysisCache = useRef(new AnalysisCache());
   const [run, setRun] = useState<RunProgress>();
-  const [fullDetail, setFullDetail] = useState(false);
   const [ready, setReady] = useState(false);
-  const [visionAvailable, setVisionAvailable] = useState(false);
-  const [visionVerified, setVisionVerified] = useState(false);
-  const [visionStatus, setVisionStatus] = useState("Not checked");
   const [hasConnected, setHasConnected] = useState(false);
   const [checks, setChecks] = useState([false, false, false]);
   const [errorCode, setErrorCode] = useState("NONE");
@@ -257,9 +252,6 @@ function App() {
     setBusy("Checking local AI...");
     setChecks([false, false, false]);
     setReady(false);
-    setVisionAvailable(false);
-    setVisionVerified(false);
-    setVisionStatus("Checking...");
     setNotice("");
     try {
       const list = await models();
@@ -267,16 +259,6 @@ function App() {
       const textOK = list.some((m) => m.name === MODEL);
       setReady(textOK);
       if (!textOK) setNotice("Text model missing. Run ollama pull qwen3:4b.");
-      if (list.some((m) => m.name === VISION_MODEL)) {
-        setVisionAvailable(true);
-        setHasConnected(true);
-        setVisionStatus(
-          "Installed - not inference verified yet. Verified on your first successful image analysis; no extra image test runs during connection.",
-        );
-      } else
-        setVisionStatus(
-          "Missing - run ollama pull qwen3-vl:4b. Text analysis remains available.",
-        );
       if (textOK) {
         setHasConnected(true);
         setErrorCode("NONE");
@@ -285,7 +267,6 @@ function App() {
         );
       }
     } catch (e) {
-      setVisionStatus("Connection unavailable");
       report(e);
     } finally {
       setBusy("");
@@ -336,8 +317,8 @@ function App() {
       "Synthetic files loaded in browser memory. Analyze them with real local Qwen. Copying these samples is disabled; use the generated fixture folder for copy tests.",
     );
   }
-  async function analyze(forceImages = false) {
-    const queue = analysisQueue(entries, forceImages);
+  async function analyze() {
+    const queue = analysisQueue(entries);
     if (!queue.length) {
       setNotice(
         "Existing successful suggestions are preserved. Only failed or unprocessed files need analysis.",
@@ -385,16 +366,13 @@ function App() {
         } as Entry;
         if (!supported.has(extension(current.name))) {
           updated.status = "unsupported";
-          updated.warning = "Unsupported format; file preserved.";
+          updated.warning = isImage(current.name)
+            ? "Not supported in this release—original preserved"
+            : "Unsupported format; file preserved.";
           setErrorCode("UNSUPPORTED");
         } else
           try {
-            const image = isImage(current.name);
-            if (image && !visionAvailable)
-              throw new Error(
-                "VISION_MODEL_MISSING: Connect Local AI to detect qwen3-vl:4b before image analysis. Text documents remain available.",
-              );
-            if (!image && !ready)
+            if (!ready)
               throw new Error(
                 "MODEL_MISSING: Connect and verify qwen3:4b before text analysis.",
               );
@@ -403,17 +381,12 @@ function App() {
               analysisCache.current,
               abort.current.signal,
               (stage) => setRun((old) => old && { ...old, stage }),
-              fullDetail,
             );
             if (abort.current.signal.aborted) break;
             reused = analyzed.cached;
             const content = { warning: analyzed.value.warning };
             const result = analyzed.value.suggestion;
-            if (!image && !analyzed.cached) setChecks([true, true, true]);
-            if (image && !analyzed.cached) {
-              setVisionVerified(true);
-              setVisionStatus("Ready - real image inference verified");
-            }
+            if (!analyzed.cached) setChecks([true, true, true]);
             updated = {
               ...updated,
               status: "suggested",
@@ -814,7 +787,7 @@ function App() {
                       "rail-step " +
                       (workflowComplete(
                         i,
-                        checks[2] || visionVerified,
+                        checks[2],
                         entries,
                         manifest?.results,
                       )
@@ -840,13 +813,13 @@ function App() {
                   <div>
                     <span className="label">LOCAL AI</span>
                     <h3>
-                      {checks[2] || visionVerified
+                      {checks[2]
                         ? "Local AI Ready"
                         : hasConnected
                           ? "Local models connected"
                           : "A quick check before we begin."}
                     </h3>
-                    <p>Text: qwen3:4b | Vision: qwen3-vl:4b | your computer</p>
+                    <p>qwen3:4b · document analysis on your computer</p>
                   </div>
                   <Button secondary onClick={checkAI} disabled={!!busy}>
                     {busy.includes("Checking") ? (
@@ -872,34 +845,18 @@ function App() {
                       </span>
                     ))}
                   </div>
-                  <p className="vision-status" role="status">
-                    <strong>Vision - qwen3-vl:4b:</strong> {visionStatus}
-                  </p>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={fullDetail}
-                      disabled={!!busy}
-                      onChange={(e) => setFullDetail(e.target.checked)}
-                    />{" "}
-                    Full-detail images (slower). Balanced previews leave
-                    originals untouched.
-                  </label>
-                  {fullDetail && entries.some((e) => isImage(e.name)) && (
-                    <button
-                      className="button secondary"
-                      disabled={!!busy || !!manifest || !visionAvailable}
-                      onClick={() => analyze(true)}
-                    >
-                      Reanalyze images in full detail
-                    </button>
-                  )}
+                  <div className="notice" role="note">
+                    <strong>Documents only.</strong> Supports DOCX, XLSX, PPTX,
+                    text-based PDF, CSV, TXT and MD. JPG, JPEG and PNG images
+                    are not supported in this release. Originals are preserved.
+                    Scanned PDFs without readable text are not supported.
+                  </div>
                   <p>
                     Restart Connection only rechecks the local API; it never
                     restarts Ollama.
                   </p>
                 </div>
-                {!ready && !visionAvailable && (
+                {!ready && (
                   <LocalAIHelp
                     expanded={[
                       "OLLAMA_UNREACHABLE",
@@ -1020,9 +977,7 @@ function App() {
                       <div className="actions">
                         <Button
                           secondary
-                          disabled={
-                            (!ready && !visionAvailable) || !!busy || !!manifest
-                          }
+                          disabled={!ready || !!busy || !!manifest}
                           onClick={() => analyze()}
                         >
                           <Sparkles size={16} /> Analyze locally
@@ -1525,10 +1480,10 @@ function App() {
                 <h2>Bring your local AI.</h2>
                 <p>
                   Use a current Windows desktop Chrome or Edge browser. Install
-                  Ollama, then download qwen3:4b for text and qwen3-vl:4b for
-                  JPG/JPEG/PNG images. The text model download is approximately
-                  2.5 GB; runtime memory needs are higher and depend on context
-                  size. Speed varies by hardware.
+                  Ollama, then download qwen3:4b for supported documents. Images
+                  are not supported in this release. The model download is
+                  approximately 2.5 GB; runtime memory needs are higher and
+                  depend on context size. Speed varies by hardware.
                 </p>
                 <a
                   className="official-link"
@@ -1593,8 +1548,9 @@ function App() {
                 <span className="label">04 · UNDERSTAND THE BOUNDARIES</span>
                 <h2>Private documents. Optional online help.</h2>
                 <p>
-                  TXT, Markdown, DOCX, text PDFs, CSV, XLSX, PPTX, JPG, JPEG and
-                  PNG are supported. Initial limits: 250 files, 20 MB per file,
+                  TXT, Markdown, DOCX, text-based PDFs, CSV, XLSX and PPTX are
+                  supported. Images and scanned PDFs without readable text are
+                  not supported. Initial limits: 250 files, 20 MB per file,
                   14,000 extracted characters. Large PDFs and workbooks are
                   sampled. Warnings identify partial content.
                 </p>

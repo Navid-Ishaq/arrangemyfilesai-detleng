@@ -1,13 +1,12 @@
 import {
   extension,
-  isImage,
+  supported,
   MAX_BYTES,
   type Entry,
   type Suggestion,
 } from "./domain";
 import { extract } from "./extract";
-import { suggest, MODEL, VISION_MODEL } from "./ollama";
-import { suggestImage } from "./images";
+import { suggest, MODEL } from "./ollama";
 export type AnalysisResult = { suggestion: Suggestion; warning?: string };
 // Inventory-scoped, bounded memory only. No private content or results persisted.
 export class AnalysisCache {
@@ -29,7 +28,7 @@ export class AnalysisCache {
     const hash = Array.from(new Uint8Array(digest), (b) =>
       b.toString(16).padStart(2, "0"),
     ).join("");
-    const key = `${isImage(file.name) ? VISION_MODEL : MODEL}:v2:${extension(file.name)}:${policy}:${hash}`;
+    const key = `${MODEL}:v2:${extension(file.name)}:${policy}:${hash}`;
     const existing = this.values.get(key);
     if (existing) return { value: structuredClone(existing), cached: true };
     const value = await produce(); // failures and uncertain images are never cached
@@ -39,28 +38,22 @@ export class AnalysisCache {
     return { value, cached: false };
   }
 }
-export function analysisQueue(entries: Entry[], retryImages = false) {
-  // Preserve reviewed successes. Group pending work to avoid repeated model swaps.
-  return entries
-    .filter((e) => (retryImages ? isImage(e.name) : e.status !== "suggested"))
-    .sort((a, b) => Number(isImage(a.name)) - Number(isImage(b.name)));
+export function analysisQueue(entries: Entry[]) {
+  return entries.filter((e) => e.status !== "suggested");
 }
 export async function analyzeFile(
   file: File,
   cache: AnalysisCache,
   signal: AbortSignal,
   stage: (value: string) => void,
-  fullDetail = false,
 ) {
+  if (!supported.has(extension(file.name)))
+    throw new Error("Not supported in this release—original preserved");
   stage("Checking for an identical file");
   return cache.run(
     file,
     async () => {
       signal.throwIfAborted();
-      if (isImage(file.name))
-        return {
-          suggestion: await suggestImage(file, signal, stage, fullDetail),
-        };
       stage("Reading document locally");
       const content = await extract(file);
       signal.throwIfAborted();
@@ -70,6 +63,6 @@ export async function analyzeFile(
         warning: content.warning,
       };
     },
-    fullDetail ? "full-detail" : "balanced",
+    "documents",
   );
 }

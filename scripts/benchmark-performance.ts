@@ -30,11 +30,8 @@ for (const mode of ["baseline", "optimized"]) {
     const produce = async () => {
       calls++;
       return {
-        suggestion: await suggest(
-          await file.text(),
-          undefined,
-          undefined,
-          (t) => timings.push(t),
+        suggestion: await suggest(await file.text(), undefined, (t) =>
+          timings.push(t),
         ),
       };
     };

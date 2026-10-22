@@ -63,7 +63,7 @@ export function ProcessingPanel({
       )}
       <small>
         {run.active
-          ? "Model loading and image analysis can take longer on CPU. Remaining time is not yet reliably predictable."
+          ? "Local model loading and document analysis can take longer on CPU. Remaining time is not yet reliably predictable."
           : "Completed suggestions remain available for your review. No originals were changed."}
       </small>
     </section>

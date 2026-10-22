@@ -11,6 +11,6 @@ it("does not run a full vision inference on connection or label installation as 
   );
   expect(connection).not.toContain("visionProbe");
   expect(connection).not.toContain("suggestImage");
-  expect(connection).toContain("Installed - not inference verified yet");
+  expect(connection).not.toContain("await suggest(");
   expect(connection).not.toContain("setVisionVerified(true)");
 });

@@ -65,7 +65,7 @@ it("preserves edits/approvals on successes and groups pending model jobs", () =>
       title: "Owner edit",
     },
   ] as Entry[];
-  expect(analysisQueue(entries).map((e) => e.id)).toEqual(["b", "a"]);
+  expect(analysisQueue(entries).map((e) => e.id)).toEqual(["a", "b"]);
   expect(entries[2].title).toBe("Owner edit");
   expect(entries[2].approved).toBe(true);
 });
@@ -77,11 +77,4 @@ it("returns detached cached values so later edits cannot poison another file", a
   expect(
     (await cache.run(file, async () => result)).value.suggestion.title,
   ).toBe("Planning notes");
-});
-it("allows explicit image reanalysis without reprocessing reviewed text", () => {
-  const entries = [
-    { name: "a.png", status: "suggested" },
-    { name: "b.txt", status: "suggested" },
-  ] as Entry[];
-  expect(analysisQueue(entries, true).map((e) => e.name)).toEqual(["a.png"]);
 });
