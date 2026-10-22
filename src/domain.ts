@@ -94,6 +94,54 @@ export function validatePlan(entries: Entry[]): Map<string, string> {
   return errors;
 }
 
+// Reserve every approved path before adding suffixes, including existing (2) names.
+export function uniqueApprovedNames(entries: Entry[]): Entry[] {
+  const key = (e: Entry) =>
+    destination(e).normalize("NFKC").toLocaleLowerCase("en-US");
+  const reserved = new Set<string>();
+  for (const e of entries.filter((e) => e.approved)) {
+    try {
+      reserved.add(key(e));
+    } catch {
+      /* Invalid paths remain for manual review. */
+    }
+  }
+  const seen = new Set<string>();
+  return entries.map((e) => {
+    if (!e.approved) return e;
+    try {
+      const original = key(e);
+      if (!seen.has(original)) {
+        seen.add(original);
+        return e;
+      }
+      const ext = extension(e.name);
+      const stem = e.title.toLowerCase().endsWith("." + ext)
+        ? e.title.slice(0, -ext.length - 1)
+        : e.title;
+      for (let i = 2; i <= entries.length + 1; i++) {
+        const suffix = ` (${i})`;
+        const updated = {
+          ...e,
+          title:
+            safeSegment(stem)
+              .slice(0, 90 - suffix.length)
+              .trimEnd() + suffix,
+        };
+        const next = key(updated);
+        if (!reserved.has(next)) {
+          reserved.add(next);
+          seen.add(next);
+          return updated;
+        }
+      }
+    } catch {
+      /* Keep invalid entries visible; never bypass validation. */
+    }
+    return e;
+  });
+}
+
 export const isImage = (name: string) =>
   ["jpg", "jpeg", "png"].includes(extension(name));
 export function workflowComplete(

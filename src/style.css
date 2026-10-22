@@ -966,6 +966,11 @@ footer small {
   overflow-wrap: anywhere;
 }
 .copy-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: #f7f8fc;
+  padding: 16px;
   margin-top: 20px;
   border-top: 1px solid var(--line);
   padding-top: 20px;
@@ -2186,3 +2191,12 @@ footer { background:#eef1f6; color:#344258; }
 .folder-rules summary { cursor:pointer; font-weight:600; padding:.75rem 0; }
 .folder-rules textarea { width:100%; margin-top:.6rem; font:inherit; font-size:1rem; line-height:1.6; }
 .coverage-note { padding:.75rem 1rem; color:#344464; background:#f1f4fa; font-size:.9rem; }
+
+/* Searchable, bounded copy audit results. */
+.copy-audit { display: block !important; }
+.copy-audit label { display: block; margin: 12px 0; }
+.copy-audit input:not([type="checkbox"]) { display: block; width: 100%; padding: 10px; }
+.audit-table { max-height: 420px; overflow: auto; margin-top: 16px; }
+.audit-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.audit-table th, .audit-table td { padding: 10px; text-align: left; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.audit-table th { position: sticky; top: 0; background: #eef2e6; }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { copyApproved, rollback, inventory } from "../src/files";
+import { copyApproved, rollback, inventory, verifyCopies } from "../src/files";
 import type { Entry } from "../src/domain";
 // In-memory handles implement the File System Access contract for failure injection.
 class Dir {
@@ -83,6 +83,23 @@ async function setup() {
   return { source, out, e };
 }
 describe("copy-first operation and verified rollback", () => {
+  it("rechecks saved bytes and detects changes, missing outputs and unselected files", async () => {
+    const { out, e } = await setup();
+    const other = { ...e, id: "b", path: "other.txt", approved: false };
+    const r = await copyApproved(undefined, handle(out), [e, other], () => {});
+    expect(r.manifest.inventory).toEqual([
+      { source: "old.txt", approved: true },
+      { source: "other.txt", approved: false },
+    ]);
+    expect((await verifyCopies(r.dir, r.manifest))[0].status).toBe("verified");
+    const dir = r.dir as unknown as Dir;
+    const notes = await dir.getDirectoryHandle("Notes");
+    const file = await notes.getFileHandle("New title.txt");
+    file.data = new File(["changed!"], "New title.txt");
+    expect((await verifyCopies(r.dir, r.manifest))[0].status).toBe("changed");
+    await notes.removeEntry("New title.txt");
+    expect((await verifyCopies(r.dir, r.manifest))[0].status).toBe("missing");
+  });
   it.each(["jpg", "jpeg", "png"])(
     "blocks unsupported %s before writing output",
     async (ext) => {

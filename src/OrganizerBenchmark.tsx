@@ -1,12 +1,43 @@
 import { useState } from "react";
 import { benchmarkFixtures } from "./benchmark-fixtures";
 import { analyzeFile, AnalysisCache } from "./analysis-engine";
-import { copyApproved } from "./files";
+import { copyApproved, type Manifest } from "./files";
+import { CopyAudit } from "./CopyAudit";
 import { fileEntry } from "./drop-files";
-import { destination } from "./domain";
+import { destination, uniqueApprovedNames } from "./domain";
 export function OrganizerBenchmark() {
   const [lines, setLines] = useState<string[]>([]),
     [busy, setBusy] = useState(false);
+  const [audit, setAudit] = useState<{
+    manifest: Manifest;
+    dir: FileSystemDirectoryHandle;
+  }>();
+  async function checkCopyUI() {
+    setBusy(true);
+    try {
+      const entries = uniqueApprovedNames(
+        ["one", "two", "three"].map((text, i) => ({
+          ...fileEntry(new File([text], "Study notes.txt")),
+          path: `folder-${i}/Study notes.txt`,
+          title: "Study notes",
+          category: "Study & Learning",
+          subcategory: "",
+          status: "suggested",
+          approved: true,
+        })),
+      );
+      const root = await navigator.storage.getDirectory();
+      const output = await root.getDirectoryHandle(
+        `copy-checker-${crypto.randomUUID()}`,
+        { create: true },
+      );
+      setAudit(await copyApproved(undefined, output, entries, () => {}));
+    } catch (error) {
+      setLines([String(error)]);
+    } finally {
+      setBusy(false);
+    }
+  }
   async function run() {
     setBusy(true);
     setLines([]);
@@ -101,6 +132,17 @@ export function OrganizerBenchmark() {
         {busy ? "Benchmark running…" : "Run organizer benchmark"}
       </button>
       <pre style={{ whiteSpace: "pre-wrap" }}>{lines.join("\n")}</pre>
+      <button disabled={busy} onClick={checkCopyUI}>
+        Run copy checker regression
+      </button>
+      {audit && (
+        <CopyAudit
+          key={audit.manifest.session}
+          manifest={audit.manifest}
+          dir={audit.dir}
+          disabled={busy}
+        />
+      )}
     </section>
   );
 }

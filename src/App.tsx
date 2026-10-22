@@ -5,6 +5,7 @@ import { ProcessingPanel, type RunProgress } from "./ProcessingPanel";
 import { analysisWarning } from "./analysis-errors";
 import { isImage, workflowComplete } from "./domain";
 import { GuideReply } from "./GuideReply";
+import { CopyAudit } from "./CopyAudit";
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import {
   ArrowRight,
@@ -45,6 +46,7 @@ import {
   supported,
   validatePlan,
   destination,
+  uniqueApprovedNames,
 } from "./domain";
 import { inventory, copyApproved, rollback, Manifest } from "./files";
 import { sampleDocuments, demoRows } from "./samples";
@@ -211,6 +213,7 @@ function App() {
   const [filter, setFilter] = useState("all");
   const [manifest, setManifest] = useState<Manifest>();
   const [outDir, setOutDir] = useState<FileSystemDirectoryHandle>();
+  const [outputLabel, setOutputLabel] = useState("");
   const [guide, setGuide] = useState(false);
   const [familyIndex, setFamilyIndex] = useState(-1);
   const [demoStep, setDemoStep] = useState(0);
@@ -494,6 +497,7 @@ function App() {
       )
         return;
       setBusy("Copying and verifying approved files…");
+      setOutputLabel(output.name);
       const result = await copyApproved(source, output, entries, setManifest);
       setManifest(result.manifest);
       setOutDir(result.dir);
@@ -1106,6 +1110,7 @@ function App() {
                         <option value="suggested">Suggestions</option>
                         <option value="attention">Needs attention</option>
                         <option value="approved">Approved</option>
+                        <option value="blocked">Copy blockers</option>
                       </select>
                       <button
                         disabled={!!busy || !!manifest}
@@ -1153,6 +1158,51 @@ function App() {
                         )}
                       </div>
                     )}
+                    {errors.size > 0 && (
+                      <div className="warning" role="alert">
+                        <strong>
+                          Copy blocked: {errors.size} approved files have
+                          destination errors.
+                        </strong>
+                        <p>
+                          Files from different folders may share the same output
+                          name. Originals will never be overwritten.
+                        </p>
+                        <div className="actions">
+                          <button
+                            disabled={!!busy || !!manifest}
+                            onClick={() => setFilter("blocked")}
+                          >
+                            Show copy blockers
+                          </button>
+                          <button
+                            disabled={!!busy || !!manifest}
+                            onClick={() => {
+                              setEntries(uniqueApprovedNames(entries));
+                              setNotice(
+                                "Duplicate output names received unique numbered suffixes. Review the updated destinations before copying. Other invalid paths still need editing.",
+                              );
+                            }}
+                          >
+                            Make duplicate names unique
+                          </button>
+                          <button
+                            disabled={!!busy || !!manifest}
+                            onClick={() => {
+                              setEntries(
+                                entries.map((e) =>
+                                  errors.has(e.id)
+                                    ? { ...e, approved: false }
+                                    : e,
+                                ),
+                              );
+                            }}
+                          >
+                            Deselect blocked files
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="review-list">
                       {entries
                         .filter(
@@ -1161,6 +1211,7 @@ function App() {
                             (filter === "suggested" &&
                               e.status === "suggested") ||
                             (filter === "approved" && e.approved) ||
+                            (filter === "blocked" && errors.has(e.id)) ||
                             (filter === "attention" &&
                               (e.warning || errors.has(e.id))),
                         )
@@ -1265,6 +1316,8 @@ function App() {
                       <span>
                         <ShieldCheck size={17} /> {approved.length} approved ·
                         originals preserved
+                        {errors.size > 0 &&
+                          ` · ${errors.size} blocked — resolve destination errors above`}
                       </span>
                       <Button
                         disabled={
@@ -1284,9 +1337,14 @@ function App() {
                 )}
                 {manifest && (
                   <section className="results">
-                    <h3>Operation results</h3>
+                    <h3>
+                      {busy ? "Copying and verifying…" : "Operation results"}
+                    </h3>
                     <p>
-                      Output session: <code>{manifest.session}</code>
+                      Output location:{" "}
+                      <code>
+                        {outputLabel}/{manifest.session}
+                      </code>
                     </p>
                     <p>
                       {
@@ -1300,13 +1358,12 @@ function App() {
                       }{" "}
                       failures
                     </p>
-                    {manifest.results.map((r, i) => (
-                      <div key={i}>
-                        {r.destination}
-                        <span>{r.status}</span>
-                        {r.error && <small>{r.error}</small>}
-                      </div>
-                    ))}
+                    <CopyAudit
+                      key={manifest.session}
+                      manifest={manifest}
+                      dir={outDir}
+                      disabled={!!busy}
+                    />
                     <div className="actions">
                       <Button secondary onClick={downloadManifest}>
                         <Download size={16} /> Download manifest

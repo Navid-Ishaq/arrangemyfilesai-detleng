@@ -69,3 +69,9 @@ Only user chat text, bounded recent history and opt-in stage/error enums reach G
 `server/` — optional help-only cloud Guide, contracts, CORS and request/resource controls.
 
 See docs/PERFORMANCE.md for measured results and benchmark limitations.
+
+## Bulk copy conflicts and verification
+
+If Copy is disabled after approval, the workspace shows the number of approved files with destination errors. Use **Show copy blockers** to filter them. **Make duplicate names unique** adds numbered suffixes to approved duplicates, reserving existing names; review the updated destinations before copying. **Deselect blocked files** allows a reviewed, valid subset to proceed. No overwrite protection is bypassed.
+
+The output results show the chosen folder/session, selected count, verified copies and failures. **Copy checker** searches source-to-destination mappings. **Recheck saved copies** reopens output bytes and compares SHA-256 against the hashes recorded during copying; it reports verified, changed, missing or unreadable outputs. **Download copy report (CSV)** includes selected results, hashes, latest recheck statuses and inventoried files that were not selected. The JSON manifest is also saved in the output session. Recheck is available while this session remains open, not after a reload.

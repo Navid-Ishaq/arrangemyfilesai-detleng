@@ -18,6 +18,7 @@ export type Manifest = {
     lastModified: number;
   }[];
   results: Result[];
+  inventory?: { source: string; approved: boolean }[];
 };
 export async function inventory(
   root: FileSystemDirectoryHandle,
@@ -142,6 +143,7 @@ export async function copyApproved(
       lastModified: e.file.lastModified,
     })),
     results: [],
+    inventory: entries.map((e) => ({ source: e.path, approved: e.approved })),
   };
   await write(
     dir,
@@ -199,6 +201,44 @@ export async function copyApproved(
   }
   return { manifest, dir };
 }
+export type CopyCheck = {
+  source: string;
+  destination: string;
+  status: "verified" | "missing" | "changed" | "unreadable";
+  error?: string;
+};
+// Reopen output bytes; do not trust the UI's previous success status.
+export async function verifyCopies(
+  dir: FileSystemDirectoryHandle,
+  manifest: Manifest,
+  notify: (checks: CopyCheck[]) => void = () => {},
+) {
+  const checks: CopyCheck[] = [];
+  for (const r of manifest.results.filter((r) => r.status === "copied")) {
+    let check: CopyCheck = {
+      source: r.source,
+      destination: r.destination,
+      status: "unreadable",
+    };
+    try {
+      const p = await parent(dir, r.destination, false);
+      const file = await (await p.dir.getFileHandle(p.name)).getFile();
+      check.status =
+        r.sha256 && (await hash(file)) === r.sha256 ? "verified" : "changed";
+    } catch (error) {
+      check.status =
+        (error as DOMException).name === "NotFoundError"
+          ? "missing"
+          : "unreadable";
+      check.error =
+        error instanceof Error ? error.message : "Could not read output";
+    }
+    checks.push(check);
+    notify([...checks]);
+  }
+  return checks;
+}
+
 export async function rollback(
   dir: FileSystemDirectoryHandle,
   manifest: Manifest,

@@ -11,3 +11,8 @@ Use generated synthetic work/fixtures and separate work/output in Chrome/Edge. D
 Do not test on the owner's Coursera backup or private assignments. Private archive suitability, non-Latin complex title extraction, scanned/encrypted inputs and slow native/network storage need separate owner/beta validation. Existing browser-private benchmark performance is not a native disk benchmark.
 
 Optional Guide smoke tests use synthetic questions and provider quota; no new live Guide test/deployment was performed for this core-engine change. Updated product instructions require backend redeployment.
+
+### Bulk-copy regression
+- Collision test: 273 colliding names plus an existing `(2)` destination; keep approvals, preserve originals, produce unique destinations and remain idempotent.
+- Recheck test: read actual copied bytes, then inject changed and missing outputs and verify detection; keep unselected inventory in the manifest.
+- Dev Quick Guide: **Run copy checker regression** writes three synthetic outputs to browser-owned storage and displays the production checker. Click **Recheck saved copies**, inspect search/results and download the CSV. This does not test native Windows output-folder permissions.

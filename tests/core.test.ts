@@ -1,6 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import request from "supertest";
-import { safeSegment, destination, validatePlan, Entry } from "../src/domain";
+import {
+  safeSegment,
+  destination,
+  validatePlan,
+  uniqueApprovedNames,
+  Entry,
+} from "../src/domain";
 import { suggestionSchema } from "../src/suggestion-schema";
 import { createApp } from "../server/app";
 const entry = (id: string, title: string): Entry => ({
@@ -16,6 +22,31 @@ const entry = (id: string, title: string): Entry => ({
   subcategory: "",
 });
 describe("deterministic naming and approval", () => {
+  it("resolves a bulk collision set without overwriting reserved names or changing approvals", () => {
+    const entries = [
+      entry("reserved", "Notes (2)"),
+      ...Array.from({ length: 273 }, (_, i) => ({
+        ...entry(String(i), i % 2 ? "notes" : "Notes"),
+        path: `folder-${i}/old.PDF`,
+      })),
+    ];
+    const fixed = uniqueApprovedNames(entries);
+    expect(validatePlan(fixed).size).toBe(0);
+    expect(fixed.every((e) => e.approved)).toBe(true);
+    expect(fixed[0].title).toBe("Notes (2)");
+    expect(new Set(fixed.map((e) => destination(e).toLowerCase())).size).toBe(
+      274,
+    );
+    expect(uniqueApprovedNames(fixed)).toEqual(fixed);
+    expect(entries[2].title).toBe("notes");
+  });
+  it("leaves unsupported files and invalid destinations blocked", () => {
+    const fixed = uniqueApprovedNames([
+      { ...entry("a", "name"), name: "image.jpg" },
+      entry("b", ""),
+    ]);
+    expect(validatePlan(fixed).size).toBe(2);
+  });
   it("preserves extension and removes unsafe path characters", () => {
     expect(destination(entry("1", "../A:B"))).toBe("Learning/.. A B.pdf");
     expect(safeSegment("CON")).toBe("_CON");
