@@ -1,20 +1,28 @@
 import { useState } from "react";
-import { type Manifest, type CopyCheck, verifyCopies } from "./files";
+import {
+  type Manifest,
+  type CopyCheck,
+  verifyCopies,
+  copySummary,
+} from "./files";
 
 export function CopyAudit({
   manifest,
   dir,
   disabled,
+  interruption,
 }: {
   manifest: Manifest;
   dir?: FileSystemDirectoryHandle;
   disabled: boolean;
+  interruption?: string;
 }) {
   const [checks, setChecks] = useState<CopyCheck[]>([]);
   const [checking, setChecking] = useState(false);
   const [query, setQuery] = useState("");
   const [onlyIssues, setOnlyIssues] = useState(false);
   const [checkedAt, setCheckedAt] = useState("");
+  const summary = copySummary(manifest);
   const rows = manifest.plan.map((p) => {
     const result = manifest.results.find(
       (r) => r.source === p.source && r.destination === p.destination,
@@ -72,6 +80,37 @@ export function CopyAudit({
   return (
     <div className="copy-audit">
       <h4>Copy checker</h4>
+      <div
+        className={
+          summary.pending || summary.failed || interruption
+            ? "warning"
+            : "notice"
+        }
+        role="status"
+      >
+        <strong>
+          {disabled
+            ? "Copy in progress"
+            : summary.pending
+              ? "Incomplete copy session — do not treat this batch as complete"
+              : summary.failed
+                ? "Copy finished with failures"
+                : "Copy processing finished — review results below"}
+        </strong>
+        <p>
+          {summary.approved} approved · {summary.copied} recorded verified
+          copies · {summary.failed} failed · {summary.pending} pending / not
+          recorded
+        </p>
+        {summary.pending > 0 && (
+          <p>
+            {summary.pending} approved files have no recorded result. They are
+            not confirmed copied. A file written just before an interruption may
+            exist without a saved result.
+          </p>
+        )}
+        {interruption && <p>{interruption}</p>}
+      </div>
       <p>
         Every successful copy was reopened and matched against the original
         SHA-256 hash. Recheck reads the saved files again to detect missing or

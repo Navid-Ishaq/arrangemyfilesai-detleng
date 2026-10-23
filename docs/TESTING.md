@@ -16,3 +16,9 @@ Optional Guide smoke tests use synthetic questions and provider quota; no new li
 - Collision test: 273 colliding names plus an existing `(2)` destination; keep approvals, preserve originals, produce unique destinations and remain idempotent.
 - Recheck test: read actual copied bytes, then inject changed and missing outputs and verify detection; keep unselected inventory in the manifest.
 - Dev Quick Guide: **Run copy checker regression** writes three synthetic outputs to browser-owned storage and displays the production checker. Click **Recheck saved copies**, inspect search/results and download the CSV. This does not test native Windows output-folder permissions.
+
+### Interrupted copy visibility
+- Import a saved 202-plan / 72-result manifest: show **Incomplete**, 72 recorded verified copies, 130 pending/not recorded, even with zero failures.
+- Inject report-write failure after writing an output: retain the last persisted manifest and output handle; do not count unrecorded output as confirmed.
+- Reject malformed manifests, path traversal and unmatched results.
+- Open a JSON-only report after reload; require selecting the actual output folder for hash recheck. This adds reporting, not automatic resume.

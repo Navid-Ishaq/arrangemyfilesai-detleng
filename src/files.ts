@@ -1,4 +1,5 @@
 import { destination, Entry, MAX_FILES, validatePlan } from "./domain";
+import { z } from "zod";
 export type Result = {
   source: string;
   destination: string;
@@ -20,6 +21,101 @@ export type Manifest = {
   results: Result[];
   inventory?: { source: string; approved: boolean }[];
 };
+export class CopyInterruptedError extends Error {
+  constructor(
+    message: string,
+    public manifest: Manifest,
+    public dir: FileSystemDirectoryHandle,
+  ) {
+    super(message);
+    this.name = "CopyInterruptedError";
+  }
+}
+const savedPath = z
+  .string()
+  .min(1)
+  .max(1000)
+  .refine(
+    (p) =>
+      !/[\\\x00-\x1f]/.test(p) &&
+      p
+        .split("/")
+        .every((part) => part !== "" && part !== "." && part !== ".."),
+    "Invalid relative path in copy report",
+  );
+const savedManifestSchema = z
+  .object({
+    version: z.literal(1),
+    session: z.string().min(1).max(200),
+    created: z.string(),
+    plan: z
+      .array(
+        z.object({
+          source: savedPath,
+          destination: savedPath,
+          approved: z.literal(true),
+          size: z.number().nonnegative(),
+          lastModified: z.number(),
+        }),
+      )
+      .max(MAX_FILES),
+    results: z
+      .array(
+        z.object({
+          source: savedPath,
+          destination: savedPath,
+          status: z.enum(["copied", "failed", "rolled-back", "changed"]),
+          sha256: z
+            .string()
+            .regex(/^[a-f0-9]{64}$/i)
+            .optional(),
+          error: z.string().optional(),
+        }),
+      )
+      .max(MAX_FILES),
+    inventory: z
+      .array(z.object({ source: savedPath, approved: z.boolean() }))
+      .max(MAX_FILES)
+      .optional(),
+  })
+  .superRefine((m, ctx) => {
+    const planned = new Set(m.plan.map((p) => p.destination));
+    const found = new Set<string>();
+    for (const r of m.results) {
+      if (
+        !planned.has(r.destination) ||
+        found.has(r.destination) ||
+        !m.plan.some(
+          (p) => p.source === r.source && p.destination === r.destination,
+        ) ||
+        (r.status === "copied" && !r.sha256)
+      )
+        ctx.addIssue({ code: "custom", message: "Inconsistent copy report" });
+      found.add(r.destination);
+    }
+    if (planned.size !== m.plan.length)
+      ctx.addIssue({
+        code: "custom",
+        message: "Duplicate output paths in copy report",
+      });
+  });
+export function parseSavedManifest(value: unknown): Manifest {
+  return savedManifestSchema.parse(value);
+}
+export function copySummary(manifest: Manifest) {
+  return {
+    approved: manifest.plan.length,
+    recorded: manifest.results.length,
+    copied: manifest.results.filter((r) => r.status === "copied").length,
+    failed: manifest.results.filter((r) => r.status === "failed").length,
+    pending: manifest.plan.filter(
+      (p) =>
+        !manifest.results.some(
+          (r) => r.source === p.source && r.destination === p.destination,
+        ),
+    ).length,
+  };
+}
 export async function inventory(
   root: FileSystemDirectoryHandle,
 ): Promise<{ entries: Entry[]; limited: boolean }> {
@@ -150,6 +246,8 @@ export async function copyApproved(
     "operation-manifest.json",
     JSON.stringify(manifest, null, 2),
   );
+  let lastSaved = structuredClone(manifest);
+  notify(structuredClone(manifest));
   for (const e of approved) {
     const target = destination(e);
     let result: Result = {
@@ -192,11 +290,20 @@ export async function copyApproved(
     }
     manifest.results.push(result);
     // Persist each result. A manifest failure stops the run instead of losing tracking.
-    await write(
-      dir,
-      "operation-manifest.json",
-      JSON.stringify(manifest, null, 2),
-    );
+    try {
+      await write(
+        dir,
+        "operation-manifest.json",
+        JSON.stringify(manifest, null, 2),
+      );
+      lastSaved = structuredClone(manifest);
+    } catch (error) {
+      throw new CopyInterruptedError(
+        `Copy interrupted while saving the report: ${error instanceof Error ? error.message : "Storage unavailable"}. Unrecorded outputs may exist; inspect them before retrying.`,
+        lastSaved,
+        dir,
+      );
+    }
     notify(structuredClone(manifest));
   }
   return { manifest, dir };

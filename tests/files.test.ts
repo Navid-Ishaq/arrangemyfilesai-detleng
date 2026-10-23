@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { copyApproved, rollback, inventory, verifyCopies } from "../src/files";
+import {
+  copyApproved,
+  rollback,
+  inventory,
+  verifyCopies,
+  CopyInterruptedError,
+  copySummary,
+} from "../src/files";
 import type { Entry } from "../src/domain";
 // In-memory handles implement the File System Access contract for failure injection.
 class Dir {
@@ -83,6 +90,50 @@ async function setup() {
   return { source, out, e };
 }
 describe("copy-first operation and verified rollback", () => {
+  it("retains the last persisted report and output handle when a manifest write interrupts copying", async () => {
+    const { out, e } = await setup();
+    let savedDir: Dir | undefined;
+    const createDir = out.getDirectoryHandle.bind(out);
+    out.getDirectoryHandle = async (name, options) => {
+      const dir = await createDir(name, options);
+      savedDir = dir;
+      const getFile = dir.getFileHandle.bind(dir);
+      dir.getFileHandle = async (fileName, opts) => {
+        const file = await getFile(fileName, opts);
+        if (
+          fileName === "operation-manifest.json" &&
+          file.data.name === fileName
+        ) {
+          file.createWritable = async () => {
+            throw new DOMException("Disk unavailable", "NotFoundError");
+          };
+        }
+        return file;
+      };
+      return dir;
+    };
+    try {
+      await copyApproved(undefined, handle(out), [e], () => {});
+      throw new Error("Expected interruption");
+    } catch (error) {
+      expect(error).toBeInstanceOf(CopyInterruptedError);
+      const interrupted = error as CopyInterruptedError;
+      expect(interrupted.dir).toBe(savedDir);
+      expect(copySummary(interrupted.manifest)).toMatchObject({
+        approved: 1,
+        recorded: 0,
+        pending: 1,
+      });
+      // Output bytes may exist even though its result was not persisted.
+      expect(
+        await (
+          await (
+            await savedDir!.getDirectoryHandle("Notes")
+          ).getFileHandle("New title.txt")
+        ).getFile(),
+      ).toBeTruthy();
+    }
+  });
   it("rechecks saved bytes and detects changes, missing outputs and unselected files", async () => {
     const { out, e } = await setup();
     const other = { ...e, id: "b", path: "other.txt", approved: false };

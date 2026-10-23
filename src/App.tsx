@@ -6,6 +6,7 @@ import { analysisWarning } from "./analysis-errors";
 import { isImage, workflowComplete } from "./domain";
 import { GuideReply } from "./GuideReply";
 import { CopyAudit } from "./CopyAudit";
+import { SavedCopyReport } from "./SavedCopyReport";
 import { useEffect, useRef, useState, lazy, Suspense } from "react";
 import {
   ArrowRight,
@@ -48,7 +49,13 @@ import {
   destination,
   uniqueApprovedNames,
 } from "./domain";
-import { inventory, copyApproved, rollback, Manifest } from "./files";
+import {
+  inventory,
+  copyApproved,
+  rollback,
+  Manifest,
+  CopyInterruptedError,
+} from "./files";
 import { sampleDocuments, demoRows } from "./samples";
 import { BrowserChecks } from "./BrowserChecks";
 import { guideEndpoint } from "./guide-client";
@@ -214,6 +221,7 @@ function App() {
   const [manifest, setManifest] = useState<Manifest>();
   const [outDir, setOutDir] = useState<FileSystemDirectoryHandle>();
   const [outputLabel, setOutputLabel] = useState("");
+  const [copyInterruption, setCopyInterruption] = useState("");
   const [guide, setGuide] = useState(false);
   const [familyIndex, setFamilyIndex] = useState(-1);
   const [demoStep, setDemoStep] = useState(0);
@@ -497,6 +505,7 @@ function App() {
       )
         return;
       setBusy("Copying and verifying approved files…");
+      setCopyInterruption("");
       setOutputLabel(output.name);
       const result = await copyApproved(source, output, entries, setManifest);
       setManifest(result.manifest);
@@ -508,6 +517,11 @@ function App() {
         `${copied} verified copies in ${output.name}/${result.manifest.session}. ${result.manifest.results.length - copied} failed. Review the operation results below.`,
       );
     } catch (e) {
+      if (e instanceof CopyInterruptedError) {
+        setManifest(e.manifest);
+        setOutDir(e.dir);
+        setCopyInterruption(e.message);
+      }
       report(e);
     } finally {
       setBusy("");
@@ -1363,6 +1377,7 @@ function App() {
                       manifest={manifest}
                       dir={outDir}
                       disabled={!!busy}
+                      interruption={copyInterruption}
                     />
                     <div className="actions">
                       <Button secondary onClick={downloadManifest}>
@@ -1383,6 +1398,7 @@ function App() {
                     </p>
                   </section>
                 )}
+                {!busy && <SavedCopyReport />}
               </div>
             </div>
           </section>
