@@ -2293,3 +2293,20 @@ header .header-action { display:inline-flex; background:#234d40; color:white; }
   .help-page .help-grid article { padding:24px; }
   .help-page .help-grid h2 { font-size:25px; }
 }
+/* Persistent navigation, shared help, and a compact footer. */
+header { position:sticky; top:0; z-index:15; box-shadow:0 2px 12px #183e2710; }
+html { scroll-padding-top:180px; }
+.site-guide-launcher { position:fixed; right:24px; bottom:24px; z-index:16; border-radius:50px; box-shadow:0 6px 24px #27205935; padding:14px 20px; gap:10px; }
+body:has(.site-guide-launcher) { padding-bottom:90px; }
+footer.compact-footer { padding:32px clamp(20px,6vw,100px) 20px; background:#eaf0e9; color:#183e32; }
+.compact-footer .footer-columns { display:grid!important; grid-template-columns:1.15fr 1fr 1.2fr 1fr; gap:30px; }
+.compact-footer h2 { font-size:18px; letter-spacing:0; color:#183e32; margin:0 0 12px; line-height:1.5; }
+.compact-footer .footer-brand > strong { font-size:22px; }
+.compact-footer p, .compact-footer span { color:#304c40; font-size:17px; line-height:1.7; }
+.compact-footer p { margin:12px 0; }
+.compact-footer a, .compact-footer button { display:block; color:#183e32; font-size:17px; line-height:1.6; padding:4px 0; margin:0; text-align:left; overflow-wrap:anywhere; }
+.compact-footer .footer-ecosystem a { margin-bottom:8px; }
+.compact-footer .footer-base { display:flex!important; flex-direction:row!important; justify-content:space-between; flex-wrap:wrap; gap:12px; border-top:1px solid #cbd8cd; margin-top:24px; padding-top:16px; }
+@media(max-width:1000px) { .compact-footer .footer-columns { grid-template-columns:1fr 1fr; } }
+@media(max-width:600px) { .compact-footer .footer-columns { grid-template-columns:1fr; gap:24px; } .site-guide-launcher { right:12px; bottom:12px; padding:12px 16px; font-size:17px!important; } html { scroll-padding-top:170px; } }
+footer.compact-footer a, footer.compact-footer button { font-size:17px; color:#183e32; line-height:1.65; font-weight:500; }

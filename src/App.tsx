@@ -822,16 +822,7 @@ function App() {
                   for.
                 </p>
               </div>
-              <button
-                className="button guide-launcher"
-                aria-expanded={guide}
-                onClick={() => setGuide(!guide)}
-              >
-                <span className="guide-emoji" aria-hidden="true">
-                  🤖
-                </span>{" "}
-                DeTLeng AI Guide
-              </button>
+
             </div>
             <div className="workspace-layout">
               <aside className="workflow-rail">
@@ -1319,7 +1310,8 @@ function App() {
           </>
         )}
       </main>
-      <EcosystemFooter />
+      <EcosystemFooter navigate={(page) => { if (page === "privacy") { go("help"); setTimeout(() => document.getElementById("privacy")?.scrollIntoView(), 0); } else go(page); }} openLogin={() => setLoginOpen(true)} />
+      {!guide && <button className="button guide-launcher site-guide-launcher" aria-expanded={false} onClick={() => setGuide(true)}><span className="guide-emoji" aria-hidden="true">🤖</span> DeTLeng AI Guide</button>}
       {loginOpen && <LaunchLogin close={() => setLoginOpen(false)} />}
       {guide && (
         <Guide

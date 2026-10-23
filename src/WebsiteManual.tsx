@@ -5,8 +5,16 @@ export const ecosystemCards = [
   ["LFDS — Logic First Digital Solutions ↗", "https://lfds.detleng.com/", "Understand the problem. Build a practical solution."],
   ["DeTLeng Network — Explore the network ↗", "https://network.detleng.com/", "Explore connected projects and ideas."],
 ];
-export function EcosystemFooter() {
-  return <footer className="ecosystem-footer"><h2>EXPLORE THE DETLENG ECOSYSTEM</h2><div className="ecosystem-cards">{ecosystemCards.map(([label, href, subtitle]) => <a key={href} href={href} target="_blank" rel="noopener noreferrer"><strong>{label}</strong><span>{subtitle}</span></a>)}</div><p>Arrange My Files AI · By DeTLeng · Local organization, optional online Guide</p></footer>;
+export function EcosystemFooter({ navigate, openLogin }: { navigate: (page: "home" | "organize" | "family" | "demo" | "help" | "privacy") => void; openLogin: () => void }) {
+  return <footer className="ecosystem-footer compact-footer">
+    <div className="footer-columns">
+      <div className="footer-brand"><strong>Arrange My Files AI</strong><p>Give your files a clearer name and a place.</p><span>By DeTLeng</span></div>
+      <div className="footer-navigation"><h2>Arrange My Files</h2>{([["home", "Home"], ["organize", "Organize Files"], ["demo", "How it works"], ["help", "Quick Guide"], ["privacy", "Privacy"], ["family", "About"]] as const).map(([page, label]) => <button key={page} onClick={() => navigate(page)}>{label}</button>)}<button onClick={openLogin}>Login / Create Account</button></div>
+      <div className="footer-ecosystem"><h2>Explore the DeTLeng ecosystem</h2>{ecosystemCards.map(([label, href]) => <a key={href} href={href} target="_blank" rel="noopener noreferrer">{label}</a>)}</div>
+      <div className="footer-care"><h2>Made with care</h2><p>Files processed on your computer.<br />Originals stay untouched.<br />Every included file accounted for.</p></div>
+    </div>
+    <div className="footer-base"><span>arrangemyfilesai.detleng.com</span><span>© {new Date().getFullYear()} DeTLeng</span></div>
+  </footer>;
 }
 export function LaunchLogin({ close }: { close: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
