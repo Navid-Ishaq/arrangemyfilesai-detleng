@@ -70,5 +70,5 @@ export const help: Record<string, string> = {
     "The file or expanded Office archive exceeds a safety limit. Choose a smaller document or skip it.",
   EMPTY:
     "No readable text was found. Skip this file or check it manually; a filename cannot establish its content.",
-  NONE: "Choose documents, use Build organization plan, review and edit suggestions, then explicitly approve copying to a separate output folder.",
+  NONE: "Add files/folders, build a plan, review categories and Needs Review, and confirm copying the included batch to a separate output folder. All files are included unless explicitly excluded.",
 };

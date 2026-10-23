@@ -30,3 +30,7 @@ An earlier run of the same controlled suite measured 6.350 s / 7.414 s for plann
 Run npm.cmd run dev, open the local site, choose Quick Guide and Run organizer benchmark (development only). This creates synthetic browser-private storage, not files in the owner's folders. Run npm.cmd test and npm.cmd run build for automated regression/build checks.
 
 Next acceptance work: owner-selected representative archives and native disk destinations, plus beta usability testing. Persistent session recovery, desktop packaging and broader content recognition are not implemented claims.
+
+## Complete output acceptance, 2026-10-23
+
+Two synthetic browser-owned source folders were combined (70 + 61 files). Actual local planning produced 83 category plans and 48 Needs Review, all included. Production copy plus recheck verified 131/131 outputs, zero failures; all 131 source files remained. Whole setup/generation/planning/copy/recheck elapsed 11,101 ms. This is an end-to-end correctness check, not the older plan-only benchmark or a native Windows/private archive performance promise.

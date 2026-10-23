@@ -1,13 +1,19 @@
 import { DEFAULT_RULES, parseRules } from "./naming";
-import { captureDrop } from "./drop-files";
+import {
+  captureDrop,
+  fileEntry,
+  mergeSelection,
+  type DropSelection,
+} from "./drop-files";
 import { AnalysisCache, analysisQueue, analyzeFile } from "./analysis-engine";
 import { ProcessingPanel, type RunProgress } from "./ProcessingPanel";
 import { analysisWarning } from "./analysis-errors";
 import { isImage, workflowComplete } from "./domain";
 import { GuideReply } from "./GuideReply";
+import { BatchReview } from "./BatchReview";
 import { CopyAudit } from "./CopyAudit";
 import { SavedCopyReport } from "./SavedCopyReport";
-import { useEffect, useRef, useState, lazy, Suspense } from "react";
+import { useEffect, useRef, useState, useMemo, lazy, Suspense } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -48,6 +54,8 @@ import {
   validatePlan,
   destination,
   uniqueApprovedNames,
+  completePlan,
+  type ScanIssue,
 } from "./domain";
 import {
   inventory,
@@ -197,6 +205,8 @@ function App() {
   const [page, setPage] = useState<Page>("home");
   const [mobile, setMobile] = useState(false);
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [scanIssues, setScanIssues] = useState<ScanIssue[]>([]);
+  const [scanAcknowledged, setScanAcknowledged] = useState(false);
   const [source, setSource] = useState<FileSystemDirectoryHandle>();
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
@@ -217,7 +227,6 @@ function App() {
     return DEFAULT_RULES;
   });
   const [errorCode, setErrorCode] = useState("NONE");
-  const [filter, setFilter] = useState("all");
   const [manifest, setManifest] = useState<Manifest>();
   const [outDir, setOutDir] = useState<FileSystemDirectoryHandle>();
   const [outputLabel, setOutputLabel] = useState("");
@@ -226,7 +235,6 @@ function App() {
   const [familyIndex, setFamilyIndex] = useState(-1);
   const [demoStep, setDemoStep] = useState(0);
   const [demoAccepted, setDemoAccepted] = useState([true, true, false, true]);
-  const [showTree, setShowTree] = useState(false);
   const abort = useRef<AbortController | null>(null);
   const supportedBrowser =
     typeof window.showDirectoryPicker === "function" && window.isSecureContext;
@@ -238,8 +246,8 @@ function App() {
   useEffect(() => {
     document.title = `${nav.find((n) => n[0] === page)?.[1]} · Arrange My Files AI`;
   }, [page]);
-  const errors = validatePlan(entries);
-  const approved = entries.filter((e) => e.approved);
+  const outputEntries = useMemo(() => completePlan(entries), [entries]);
+  const approved = outputEntries.filter((e) => e.approved);
   const suggested = entries.filter((e) => e.status === "suggested");
   const stage = manifest
     ? "results"
@@ -266,27 +274,55 @@ function App() {
         : `${code.replaceAll("_", " ")}. Open the Quick Guide for recovery steps.`,
     );
   }
+  async function addSelection(selection: DropSelection) {
+    const result = await mergeSelection(entries, selection);
+    setEntries(result.entries);
+    setSource(undefined);
+    setAllowSnapshotCopy(true);
+    setScanIssues((old) => [...old, ...result.issues]);
+    setScanAcknowledged(false);
+    setRun(undefined);
+    setNotice(
+      `${result.entries.length} files in the combined batch. ${result.duplicates} repeated items ignored. All files are included unless you explicitly exclude them.`,
+    );
+  }
+  function clearBatch() {
+    if (
+      entries.length &&
+      !window.confirm(
+        "Clear this input batch and its proposed edits? Original files and saved outputs are not deleted.",
+      )
+    )
+      return;
+    setEntries([]);
+    setSource(undefined);
+    setManifest(undefined);
+    setOutDir(undefined);
+    setRun(undefined);
+    setScanIssues([]);
+    setScanAcknowledged(false);
+    analysisCache.current.clear();
+    setCopyInterruption("");
+    setNotice("Batch cleared. Add files or folders to start a new batch.");
+  }
+  function scanProgress(count: number, path: string) {
+    setBusy(`Scanning: ${count} files found · ${path}`);
+  }
   function dropDocuments(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();
     event.stopPropagation();
     setDragActive(false);
-    if (busy || manifest) return;
+    if (busy || manifest) {
+      setNotice(
+        "Finish the current operation, or start a new batch before adding files. This drop was not added.",
+      );
+      return;
+    }
     try {
-      const read = captureDrop(event.dataTransfer);
-      setBusy("Reading dropped documents…");
+      const read = captureDrop(event.dataTransfer, scanProgress);
+      setBusy("Scanning dropped files and folders…");
       void read()
-        .then((result) => {
-          analysisCache.current.clear();
-          setRun(undefined);
-          setEntries(result.entries);
-          setSource(result.source);
-          setAllowSnapshotCopy(!result.source);
-          setManifest(undefined);
-          setOutDir(undefined);
-          setNotice(
-            `${result.entries.length} dropped files ready. Nothing analyzed or copied yet.${result.limited ? " Inventory limit reached; choose a smaller selection." : ""}`,
-          );
-        })
+        .then(addSelection)
         .catch(report)
         .finally(() => setBusy(""));
     } catch (error) {
@@ -294,21 +330,11 @@ function App() {
     }
   }
   async function choose() {
-    setAllowSnapshotCopy(false);
-    setNotice("");
     try {
       const root = await window.showDirectoryPicker({ mode: "read" });
-      setBusy("Reading folder inventory…");
-      const result = await inventory(root);
-      setSource(root);
-      analysisCache.current.clear();
-      setRun(undefined);
-      setEntries(result.entries);
-      setManifest(undefined);
-      setOutDir(undefined);
-      setNotice(
-        `${result.entries.length} files inventoried. Nothing changed.${result.limited ? " Inventory limit reached (1,000 files / 12 levels). Choose a smaller folder." : ""}`,
-      );
+      setBusy("Scanning folder…");
+      const result = await inventory(root, scanProgress);
+      await addSelection({ ...result, source: root });
     } catch (e) {
       if ((e as DOMException).name !== "AbortError") report(e);
     } finally {
@@ -316,6 +342,13 @@ function App() {
     }
   }
   function loadSamples() {
+    if (
+      entries.length &&
+      !window.confirm("Replace this batch with synthetic examples?")
+    )
+      return;
+    setScanIssues([]);
+    setScanAcknowledged(false);
     setAllowSnapshotCopy(false);
     analysisCache.current.clear();
     setRun(undefined);
@@ -327,7 +360,7 @@ function App() {
         size: new Blob([s.text]).size,
         file: new File([s.text], s.name, { type: "text/plain" }),
         status: "inventoried",
-        approved: false,
+        approved: true,
         title: "",
         category: "",
         subcategory: "",
@@ -352,11 +385,12 @@ function App() {
       rebuild &&
       approved.length &&
       !window.confirm(
-        "Rebuild all proposals with current rules? Existing edits and approvals will be cleared.",
+        "Rebuild names and category proposals using the Folder rules currently shown above? Manual name/category edits will reset. Included/excluded files stay unchanged. Original files are not modified.",
       )
     )
       return;
-    const queue = rebuild ? entries : analysisQueue(entries);
+    const included = entries.filter((e) => e.approved);
+    const queue = rebuild ? included : analysisQueue(included);
     if (!queue.length) {
       setNotice(
         "Existing successful suggestions are preserved. Only failed or unprocessed files need analysis.",
@@ -395,14 +429,19 @@ function App() {
         let reused = false;
         let updated = {
           ...current,
-          approved: false,
+          approved: current.approved,
+          reviewAccepted: false,
+          keepForReview: false,
           suggestion: undefined,
           title: "",
           category: "",
           subcategory: "",
           warning: undefined,
         } as Entry;
-        if (!supported.has(extension(current.name))) {
+        if (current.scanError) {
+          updated.status = "needs attention";
+          updated.warning = current.scanError;
+        } else if (!supported.has(extension(current.name))) {
           updated.status = "unsupported";
           updated.warning = isImage(current.name)
             ? "Not supported in this release—original preserved"
@@ -469,7 +508,7 @@ function App() {
       setNotice(
         abort.current.signal.aborted
           ? "Planning stopped. Completed suggestions are available."
-          : "Plan finished. Review the evidence, names and categories, then select the files you approve.",
+          : "Plan ready. Every included file will be copied: accepted plans into categories; uncertain or unsupported files unchanged into Needs Review.",
       );
     } finally {
       setBusy("");
@@ -477,37 +516,26 @@ function App() {
       setRun((old) => old && { ...old, active: false });
     }
   }
-  function edit(
-    id: string,
-    key: "title" | "category" | "subcategory" | "approved",
-    value: string | boolean,
-  ) {
-    setEntries((old) =>
-      old.map((e) =>
-        e.id === id
-          ? {
-              ...e,
-              [key]: value,
-              ...(key !== "approved" ? { approved: false } : {}),
-            }
-          : e,
-      ),
-    );
-  }
   async function organize() {
     if (!source && !allowSnapshotCopy) return;
     try {
       const output = await window.showDirectoryPicker({ mode: "readwrite" });
       if (
         !window.confirm(
-          `Copy ${approved.length} approved files into a new output session? Original files will remain unchanged.`,
+          `Copy ${approved.length} included files: ${approved.filter((e) => e.copyRoute === "organized").length} into category folders and ${approved.filter((e) => e.copyRoute === "review").length} unchanged into Needs Review? ${entries.length - approved.length} explicitly excluded. Originals remain unchanged.`,
         )
       )
         return;
-      setBusy("Copying and verifying approved files…");
+      setBusy("Copying and verifying included files…");
       setCopyInterruption("");
       setOutputLabel(output.name);
-      const result = await copyApproved(source, output, entries, setManifest);
+      const result = await copyApproved(
+        source,
+        output,
+        outputEntries,
+        setManifest,
+        scanIssues,
+      );
       setManifest(result.manifest);
       setOutDir(result.dir);
       const copied = result.manifest.results.filter(
@@ -726,7 +754,7 @@ function App() {
               <div className="section-heading">
                 <div>
                   <div className="eyebrow">FROM MESSY TO MEANINGFUL</div>
-                  <h2>Find your flow, one folder at a time.</h2>
+                  <h2>Find your flow, across your folders.</h2>
                 </div>
                 <p>
                   Open a folder. Understand the possibilities.
@@ -739,7 +767,7 @@ function App() {
                   {
                     n: "01",
                     title: "Choose your corner",
-                    body: "Select one folder you want to make sense of. We only read what you authorize.",
+                    body: "Drop multiple files or folders, or add folders one at a time. We only read what you choose.",
                     icon: FolderOpen,
                   },
                   {
@@ -751,7 +779,7 @@ function App() {
                   {
                     n: "03",
                     title: "Review. Then arrange.",
-                    body: "Edit the plan, approve your choices, and copy into a separate output folder.",
+                    body: "Review category plans, keep uncertain files in Needs Review, and copy the included batch into a separate output folder.",
                     icon: CheckCircle2,
                   },
                 ].map(({ n, title, body, icon: Icon }) => (
@@ -806,7 +834,10 @@ function App() {
               <div>
                 <div className="eyebrow">YOUR PRIVATE FILE WORKSPACE</div>
                 <h1>Make room for clarity.</h1>
-                <p>One folder. A thoughtful plan. Every decision yours.</p>
+                <p>
+                  Your folders. A complete output plan. Every file accounted
+                  for.
+                </p>
               </div>
               <button
                 className="button guide-launcher"
@@ -827,7 +858,7 @@ function App() {
                   "Set folder rules",
                   "Build organization plan",
                   "Review your plan",
-                  "Copy approved files",
+                  "Copy included files",
                 ].map((s, i) => (
                   <div
                     key={s}
@@ -836,8 +867,9 @@ function App() {
                       (workflowComplete(
                         i,
                         entries.length > 0,
-                        entries,
-                        manifest?.results,
+                        outputEntries,
+                        manifest?.results || [],
+                        scanIssues.length > 0,
                       )
                         ? "done"
                         : "")
@@ -969,92 +1001,100 @@ function App() {
                   onDrop={dropDocuments}
                   aria-label="Drop files or folders here"
                 >
-                  <p className="quick-naming-note">
-                    Quick naming uses the first 2 PDF pages or opening content
-                    in other documents—not the full document.
-                  </p>
                   <div className="folder-icon">
                     <FolderOpen size={31} />
                   </div>
-                  <h3>
-                    {source ? source.name : "Drop files or a folder here."}
-                  </h3>
+                  <h3>Drop multiple files or folders here</h3>
                   <p>
-                    {entries.length
-                      ? `${entries.length} files in this inventory. Originals untouched.`
-                      : "Drag documents here, or browse below. Analysis starts only when you choose Build organization plan."}
+                    Add more at any time before copying. Existing files and
+                    edits stay in your batch.
                   </p>
                   <div className="actions">
-                    <label className="selection-menu">
-                      <span>Choose how to add documents</span>
-                      <select
-                        aria-label="Add documents"
-                        defaultValue=""
-                        disabled={!!busy}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          event.target.value = "";
-                          if (value === "folder") void choose();
-                          if (value === "files")
-                            document.getElementById("document-files")?.click();
-                          if (value === "samples") loadSamples();
-                        }}
-                      >
-                        <option value="" disabled>
-                          Add documents…
-                        </option>
-                        <option value="folder" disabled={!supportedBrowser}>
-                          Choose a folder
-                        </option>
-                        <option value="files">Choose individual files</option>
-                        <option value="samples">Try synthetic examples</option>
-                      </select>
-                    </label>
-                    <label className="file-input-label">
-                      Choose individual files
+                    <Button
+                      secondary
+                      disabled={!!busy || !!manifest || !supportedBrowser}
+                      onClick={() => void choose()}
+                    >
+                      Add folder
+                    </Button>
+                    <label className="button secondary file-input-label">
+                      Add files
                       <input
                         id="document-files"
                         type="file"
                         multiple
-                        aria-label="Choose individual files"
-                        disabled={!!busy}
+                        aria-label="Add files"
+                        disabled={!!busy || !!manifest}
                         onChange={(event) => {
-                          analysisCache.current.clear();
-                          setRun(undefined);
-                          const files = Array.from(
-                            event.target.files || [],
-                          ).slice(0, 1000);
-
-                          setEntries(
-                            files.map((file) => ({
-                              id: crypto.randomUUID(),
-                              path: file.name,
-                              name: file.name,
-                              size: file.size,
-                              file,
-                              status: "inventoried",
-                              approved: false,
-                              title: "",
-                              category: "",
-                              subcategory: "",
-                            })),
-                          );
-                          setAllowSnapshotCopy(true);
-                          setSource(undefined);
-                          setManifest(undefined);
-                          setOutDir(undefined);
-                          setNotice(
-                            "Files selected for local analysis. Review and approve suggestions before choosing an output folder.",
-                          );
+                          const files = Array.from(event.target.files || []);
+                          event.target.value = "";
+                          setBusy("Adding selected files…");
+                          void addSelection({
+                            entries: files.map((file) => fileEntry(file)),
+                            limited: false,
+                          })
+                            .catch(report)
+                            .finally(() => setBusy(""));
                         }}
                       />
                     </label>
+                    <button disabled={!!busy} onClick={clearBatch}>
+                      {manifest ? "Start new batch" : "Clear / replace batch"}
+                    </button>
+                    {!entries.length && (
+                      <button disabled={!!busy} onClick={loadSamples}>
+                        Try synthetic examples
+                      </button>
+                    )}
                   </div>
+                  <p>
+                    <strong>{entries.length} files in this batch.</strong> Drop
+                    several folders together, or use Add folder repeatedly. The
+                    browser's folder picker selects one folder at a time.
+                  </p>
+                  <p className="input-limits">
+                    Batch limit: 1,000 files · 12 nested folder levels ·
+                    Analysis limit: 20 MB per file. Larger/unsupported readable
+                    files go unchanged to Needs Review.
+                  </p>
                   <small>
-                    Files stay on your computer. Review suggestions before
-                    approving copies.
+                    Quick naming reads the first 2 PDF pages or opening document
+                    content. Originals stay untouched. No model or cloud upload
+                    is used for organization.
                   </small>
                 </div>
+                {scanIssues.length > 0 && (
+                  <section className="warning" role="alert">
+                    <h3>
+                      Input scan incomplete — some content was not inventoried
+                    </h3>
+                    <p>
+                      {scanIssues.length} scan limitations or inaccessible
+                      locations. The output cannot represent the full input. No
+                      unknown files will be claimed as copied.
+                    </p>
+                    <details>
+                      <summary>View unscanned locations</summary>
+                      <ul>
+                        {scanIssues.map((issue, i) => (
+                          <li key={i}>
+                            {issue.path}: {issue.reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={scanAcknowledged}
+                        disabled={!!busy || !!manifest}
+                        onChange={(e) => setScanAcknowledged(e.target.checked)}
+                      />{" "}
+                      I understand: copy only the inventoried files; some input
+                      remains unscanned.
+                    </label>
+                  </section>
+                )}
                 {notice && (
                   <div role="status" className="notice">
                     {notice}
@@ -1078,276 +1118,19 @@ function App() {
                   </div>
                 )}
                 {entries.length > 0 && (
-                  <>
-                    <div className="inventory-toolbar">
-                      <div>
-                        <h3>
-                          Your review plan{" "}
-                          <span className="count">{entries.length}</span>
-                        </h3>
-                        <p>
-                          {suggested.length} suggestions · {approved.length}{" "}
-                          approved
-                        </p>
-                      </div>
-                      <div className="actions">
-                        <Button
-                          secondary
-                          disabled={!!busy || !!manifest}
-                          onClick={() => analyze()}
-                        >
-                          <Sparkles size={16} /> Build organization plan
-                        </Button>
-                        <button
-                          className="icon-button"
-                          aria-label="Toggle folder tree"
-                          onClick={() => setShowTree(!showTree)}
-                        >
-                          <FolderTree size={20} />
-                        </button>
-                      </div>
-                    </div>
-                    <button
-                      className="text-button"
-                      disabled={!!busy || !!manifest}
-                      onClick={() => analyze(true)}
-                    >
-                      Rebuild all with current rules
-                    </button>
-                    <div className="filters">
-                      <select
-                        aria-label="Filter files"
-                        value={filter}
-                        onChange={(e) => setFilter(e.target.value)}
-                      >
-                        <option value="all">All files</option>
-                        <option value="suggested">Suggestions</option>
-                        <option value="attention">Needs attention</option>
-                        <option value="approved">Approved</option>
-                        <option value="blocked">Copy blockers</option>
-                      </select>
-                      <button
-                        disabled={!!busy || !!manifest}
-                        onClick={() =>
-                          setEntries((old) =>
-                            old.map((e) => ({
-                              ...e,
-                              approved: e.status === "suggested" && !e.warning,
-                            })),
-                          )
-                        }
-                      >
-                        Select suggestions without warnings
-                      </button>
-                      <button
-                        disabled={!!busy || !!manifest}
-                        onClick={() =>
-                          setEntries((old) =>
-                            old.map((e) => ({ ...e, approved: false })),
-                          )
-                        }
-                      >
-                        Clear selection
-                      </button>
-                    </div>
-                    {showTree && (
-                      <div className="tree">
-                        <strong>Proposed output tree · selected files</strong>
-                        {approved.map((e) => (
-                          <div key={e.id}>
-                            └{" "}
-                            {(() => {
-                              try {
-                                return destination(e);
-                              } catch {
-                                return "Invalid destination";
-                              }
-                            })()}
-                          </div>
-                        ))}
-                        {!approved.length && (
-                          <p>
-                            Select reviewed files to preview their destinations.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    {errors.size > 0 && (
-                      <div className="warning" role="alert">
-                        <strong>
-                          Copy blocked: {errors.size} approved files have
-                          destination errors.
-                        </strong>
-                        <p>
-                          Files from different folders may share the same output
-                          name. Originals will never be overwritten.
-                        </p>
-                        <div className="actions">
-                          <button
-                            disabled={!!busy || !!manifest}
-                            onClick={() => setFilter("blocked")}
-                          >
-                            Show copy blockers
-                          </button>
-                          <button
-                            disabled={!!busy || !!manifest}
-                            onClick={() => {
-                              setEntries(uniqueApprovedNames(entries));
-                              setNotice(
-                                "Duplicate output names received unique numbered suffixes. Review the updated destinations before copying. Other invalid paths still need editing.",
-                              );
-                            }}
-                          >
-                            Make duplicate names unique
-                          </button>
-                          <button
-                            disabled={!!busy || !!manifest}
-                            onClick={() => {
-                              setEntries(
-                                entries.map((e) =>
-                                  errors.has(e.id)
-                                    ? { ...e, approved: false }
-                                    : e,
-                                ),
-                              );
-                            }}
-                          >
-                            Deselect blocked files
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    <div className="review-list">
-                      {entries
-                        .filter(
-                          (e) =>
-                            filter === "all" ||
-                            (filter === "suggested" &&
-                              e.status === "suggested") ||
-                            (filter === "approved" && e.approved) ||
-                            (filter === "blocked" && errors.has(e.id)) ||
-                            (filter === "attention" &&
-                              (e.warning || errors.has(e.id))),
-                        )
-                        .map((e) => (
-                          <article className="review-row" key={e.id}>
-                            <div className="review-source">
-                              <input
-                                type="checkbox"
-                                aria-label={"Approve " + e.name}
-                                checked={e.approved}
-                                disabled={
-                                  e.status !== "suggested" ||
-                                  !!busy ||
-                                  !!manifest
-                                }
-                                onChange={(event) =>
-                                  edit(e.id, "approved", event.target.checked)
-                                }
-                              />
-                              <FileText size={20} />
-                              <div>
-                                <strong>{e.name}</strong>
-                                <small>
-                                  {e.path} · {(e.size / 1024).toFixed(1)} KB
-                                </small>
-                              </div>
-                              <span className="status-tag">{e.status}</span>
-                            </div>
-                            {e.status === "suggested" && (
-                              <div className="review-edit">
-                                <label>
-                                  Suggested name{" "}
-                                  <span>.{extension(e.name)}</span>
-                                  <input
-                                    value={e.title}
-                                    disabled={!!busy || !!manifest}
-                                    onChange={(event) =>
-                                      edit(e.id, "title", event.target.value)
-                                    }
-                                  />
-                                </label>
-                                <label>
-                                  Category
-                                  <input
-                                    value={e.category}
-                                    disabled={!!busy || !!manifest}
-                                    onChange={(event) =>
-                                      edit(e.id, "category", event.target.value)
-                                    }
-                                  />
-                                </label>
-                                <label>
-                                  Subfolder (optional)
-                                  <input
-                                    value={e.subcategory}
-                                    disabled={!!busy || !!manifest}
-                                    onChange={(event) =>
-                                      edit(
-                                        e.id,
-                                        "subcategory",
-                                        event.target.value,
-                                      )
-                                    }
-                                  />
-                                </label>
-                                <p>
-                                  <Sparkles size={13} />
-                                  {e.suggestion?.reason}
-                                </p>
-                                <p className="destination-preview">
-                                  <FolderOpen size={13} />
-                                  {(() => {
-                                    try {
-                                      return destination(e);
-                                    } catch (error) {
-                                      return (error as Error).message;
-                                    }
-                                  })()}
-                                </p>
-                              </div>
-                            )}
-                            {e.coverage && (
-                              <p className="coverage-note">{e.coverage}</p>
-                            )}
-                            {(e.warning || errors.has(e.id)) && (
-                              <div className="warning">
-                                {errors.get(e.id) || e.warning}
-                              </div>
-                            )}
-                          </article>
-                        ))}
-                    </div>
-                    {suggested.length > 0 && approved.length === 0 && (
-                      <div className="notice" role="status">
-                        Analysis is complete, but no files are approved yet.
-                        Tick each reviewed file to enable copying. “Select
-                        suggestions without warnings” skips files with warnings;
-                        review and approve those individually.
-                      </div>
-                    )}
-                    <div className="copy-bar">
-                      <span>
-                        <ShieldCheck size={17} /> {approved.length} approved ·
-                        originals preserved
-                        {errors.size > 0 &&
-                          ` · ${errors.size} blocked — resolve destination errors above`}
-                      </span>
-                      <Button
-                        disabled={
-                          (!source && !allowSnapshotCopy) ||
-                          !supportedBrowser ||
-                          !approved.length ||
-                          errors.size > 0 ||
-                          !!busy ||
-                          !!manifest
-                        }
-                        onClick={organize}
-                      >
-                        <Copy size={16} /> Choose output & copy
-                      </Button>
-                    </div>
-                  </>
+                  <BatchReview
+                    entries={outputEntries}
+                    manifest={manifest}
+                    busy={!!busy}
+                    canCopy={
+                      supportedBrowser && (!!source || allowSnapshotCopy)
+                    }
+                    scanBlocked={scanIssues.length > 0 && !scanAcknowledged}
+                    samples={!allowSnapshotCopy && !source}
+                    change={setEntries}
+                    build={(rebuild) => void analyze(rebuild)}
+                    copy={() => void organize()}
+                  />
                 )}
                 {manifest && (
                   <section className="results">
@@ -1670,9 +1453,10 @@ function App() {
                 <span className="label">01 · ADD DOCUMENTS</span>
                 <h2>Start with your files.</h2>
                 <p>
-                  Use current desktop Chrome or Edge. Drop a folder or files
-                  into the workspace, or use Add documents. No Ollama, local
-                  model, or cloud AI is required. Your originals stay untouched.
+                  Use current desktop Chrome or Edge. Drop multiple files or
+                  folders together, or use Add folder repeatedly and Add files.
+                  New inputs are added to your batch. No Ollama, local model or
+                  cloud AI is required. Originals stay untouched.
                 </p>
                 <Button onClick={() => go("organize")}>
                   Open organizer <ArrowRight size={16} />
@@ -1699,9 +1483,12 @@ function App() {
                 <span className="label">03 · REVIEW BEFORE COPYING</span>
                 <h2>Start small. Stay in control.</h2>
                 <p>
-                  Choose a small folder first. Analysis reads supported files
-                  and proposes names. Edit suggestions, inspect warnings, and
-                  explicitly select what you approve.
+                  All inventoried files are included by default. Clear category
+                  plans go into category folders; uncertain, unsupported or
+                  unaccepted plans go unchanged into Needs Review, retaining
+                  input names and subfolders. Uncheck a file only to
+                  deliberately exclude it. Count cards filter the view; they
+                  never change inclusion.
                 </p>
                 <p>
                   Choose an output folder separate from the source. Each run
@@ -1724,8 +1511,10 @@ function App() {
                   not supported. Initial limits: 1,000 files, 20 MB per file, up
                   to 14,000 extracted characters, with a maximum 3,600-character
                   opening excerpt checked by local naming rules. PDFs use only
-                  the first 2 pages. Large PDFs and workbooks are sampled.
-                  Warnings identify partial content.
+                  the first 2 pages. Large PDFs and workbooks are sampled. Scan
+                  limitations are listed before copying. If a folder cannot be
+                  fully scanned, the output cannot be claimed as the complete
+                  input.
                 </p>
                 <p>
                   Scanned-PDF OCR, legacy DOC/XLS, and encrypted documents are
@@ -1953,7 +1742,7 @@ function Guide({
                   analysis:
                     "Wait for local suggestions. You can stop the active analysis.",
                   review:
-                    "Check names and categories. Select reviewed files, then choose a separate output folder for copying.",
+                    "All files are included by default. Review categories and Needs Review, explicitly exclude only unwanted files, then copy the included batch to a separate output folder.",
                   results:
                     "Inspect verified copies and the saved manifest. Originals remain untouched.",
                   demo: "Explore the synthetic examples. No personal files are involved.",

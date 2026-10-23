@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { benchmarkFixtures } from "./benchmark-fixtures";
 import { analyzeFile, AnalysisCache } from "./analysis-engine";
-import { copyApproved, type Manifest } from "./files";
+import { copyApproved, inventory, verifyCopies, type Manifest } from "./files";
 import { CopyAudit } from "./CopyAudit";
-import { fileEntry } from "./drop-files";
-import { destination, uniqueApprovedNames } from "./domain";
+import { fileEntry, mergeSelection } from "./drop-files";
+import {
+  destination,
+  uniqueApprovedNames,
+  completePlan,
+  type Entry,
+} from "./domain";
 export function OrganizerBenchmark() {
   const [lines, setLines] = useState<string[]>([]),
     [busy, setBusy] = useState(false);
@@ -34,6 +39,123 @@ export function OrganizerBenchmark() {
       setAudit(await copyApproved(undefined, output, entries, () => {}));
     } catch (error) {
       setLines([String(error)]);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function runCompleteWorkflow() {
+    setBusy(true);
+    setLines([]);
+    try {
+      const root = await navigator.storage.getDirectory();
+      const sandbox = await root.getDirectoryHandle(
+        `complete-workflow-${crypto.randomUUID()}`,
+        { create: true },
+      );
+      const sources = await sandbox.getDirectoryHandle("sources", {
+        create: true,
+      });
+      const output = await sandbox.getDirectoryHandle("output", {
+        create: true,
+      });
+      let combined: Entry[] = [];
+      const started = performance.now();
+      for (let batch = 0; batch < 2; batch++) {
+        const folder = await sources.getDirectoryHandle(`Input ${batch + 1}`, {
+          create: true,
+        });
+        for (let i = batch === 0 ? 0 : 70; i < (batch === 0 ? 70 : 131); i++) {
+          const name =
+            i >= 121
+              ? `${i}.png`
+              : i >= 83
+                ? `${i}.txt`
+                : `Study notes ${i}.txt`;
+          const h = await folder.getFileHandle(name, { create: true });
+          const w = await h.createWritable();
+          await w.write(
+            i >= 121
+              ? new Uint8Array([137, 80, 78, 71, i])
+              : i >= 83
+                ? "!!!"
+                : `Biology study notes ${i}. Cells and learning exercises.`,
+          );
+          await w.close();
+        }
+        const found = await inventory(folder);
+        const merged = await mergeSelection(combined, {
+          ...found,
+          source: folder,
+        });
+        combined = merged.entries;
+        setLines((old) => [
+          ...old,
+          `Added input ${batch + 1}: ${combined.length} files in combined batch.`,
+        ]);
+      }
+      const cache = new AnalysisCache();
+      const analyzed: Entry[] = [];
+      for (const e of combined) {
+        if (e.name.endsWith(".png")) {
+          analyzed.push({
+            ...e,
+            status: "unsupported",
+            warning:
+              "Image analysis is unsupported; copy unchanged to Needs Review.",
+          });
+          continue;
+        }
+        const { value } = await analyzeFile(
+          e.file,
+          cache,
+          new AbortController().signal,
+          () => {},
+        );
+        analyzed.push({
+          ...e,
+          ...value.suggestion,
+          suggestion: value.suggestion,
+          status: "suggested",
+          warning:
+            value.warning ||
+            (value.suggestion.needsReview
+              ? "Review title/category evidence"
+              : undefined),
+        });
+      }
+      const planned = completePlan(analyzed);
+      const organized = planned.filter(
+        (e) => e.copyRoute === "organized",
+      ).length;
+      const review = planned.filter((e) => e.copyRoute === "review").length;
+      const copied = await copyApproved(undefined, output, planned, () => {});
+      const checks = await verifyCopies(copied.dir, copied.manifest);
+      const originalFiles = (await inventory(sources)).entries.length;
+      const report = {
+        total: planned.length,
+        organized,
+        needsReview: review,
+        excluded: planned.filter((e) => !e.approved).length,
+        verified: checks.filter((c) => c.status === "verified").length,
+        failed: copied.manifest.results.filter((r) => r.status === "failed")
+          .length,
+        sourceFilesStillPresent: originalFiles,
+        totalSetupPlanCopyRecheckMs: Math.round(performance.now() - started),
+        storage: "Synthetic OPFS only; no private source touched",
+      };
+      if (
+        report.total !== 131 ||
+        organized !== 83 ||
+        review !== 48 ||
+        report.verified !== 131 ||
+        report.failed ||
+        originalFiles !== 131
+      )
+        throw new Error(JSON.stringify(report));
+      setLines((old) => [...old, JSON.stringify(report, null, 2)]);
+      setAudit(copied);
+    } catch (error) {
+      setLines((old) => [...old, `FAIL: ${String(error)}`]);
     } finally {
       setBusy(false);
     }
@@ -132,6 +254,9 @@ export function OrganizerBenchmark() {
         {busy ? "Benchmark running…" : "Run organizer benchmark"}
       </button>
       <pre style={{ whiteSpace: "pre-wrap" }}>{lines.join("\n")}</pre>
+      <button disabled={busy} onClick={runCompleteWorkflow}>
+        Run complete 131-file workflow
+      </button>
       <button disabled={busy} onClick={checkCopyUI}>
         Run copy checker regression
       </button>

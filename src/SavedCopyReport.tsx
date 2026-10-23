@@ -29,7 +29,7 @@ export function SavedCopyReport() {
             const file = await (
               await dir.getFileHandle("operation-manifest.json")
             ).getFile();
-            if (file.size > 5 * 1024 * 1024)
+            if (file.size > 20 * 1024 * 1024)
               throw new Error("Copy report is too large.");
             const manifest = parseSavedManifest(JSON.parse(await file.text()));
             setReport({ manifest, dir, label: dir.name });
@@ -59,7 +59,7 @@ export function SavedCopyReport() {
             setError("");
             setReading(true);
             try {
-              if (file.size > 5 * 1024 * 1024)
+              if (file.size > 20 * 1024 * 1024)
                 throw new Error("Copy report is too large.");
               setReport({
                 manifest: parseSavedManifest(JSON.parse(await file.text())),

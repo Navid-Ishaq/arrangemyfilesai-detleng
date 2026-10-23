@@ -6,6 +6,6 @@ The optional online GroqCloud Guide receives user-written chat, bounded recent c
 
 The Guide backend uses Mastra with logging disabled. There is no chat database, document upload route or filesystem tool. Guide navigation suggestions cannot authorize file operations, and Guide failure never blocks organization.
 
-Only approved copies are written to a separately selected output session. Source documents are never intentionally changed. The local manifest contains relative paths and hashes; treat it as private. Rollback verifies outputs before removing only unchanged generated copies. Reload loses in-memory handles and edits; the output manifest remains on disk for manual recovery.
+Only included copies are written to a separately selected output session. Source documents are never intentionally changed. The local manifest contains relative paths and hashes; treat it as private. Rollback verifies outputs before removing only unchanged generated copies. Reload loses in-memory handles and edits; open the saved output folder to inspect the manifest and recheck copied bytes. Uncertain/unsupported readable files are copied unchanged to Needs Review unless explicitly excluded. No inventory or document data is sent to a model.
 
 App assets/readers/fonts are bundled locally. External ecosystem links open when clicked. No analytics or remote-font dependency is included. Network requests needed to load the website/assets are distinct from optional online Guide chat.

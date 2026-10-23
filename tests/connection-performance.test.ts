@@ -11,7 +11,7 @@ it("runs the organizer independently of AI connections", () => {
   );
   expect(source).not.toContain('from "./ollama"');
   expect(source).not.toContain("checkAI()");
-  expect(source).toContain("Build organization plan");
-  expect(source).toContain('aria-label="Add documents"');
+  expect(source).toContain("BatchReview");
+  expect(source).toContain('aria-label="Add files"');
   expect(engine).not.toContain("await suggest(");
 });

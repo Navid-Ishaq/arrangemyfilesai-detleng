@@ -6,7 +6,10 @@ import {
   verifyCopies,
   CopyInterruptedError,
   copySummary,
+  hash,
+  parseSavedManifest,
 } from "../src/files";
+import { completePlan } from "../src/domain";
 import type { Entry } from "../src/domain";
 // In-memory handles implement the File System Access contract for failure injection.
 class Dir {
@@ -90,6 +93,97 @@ async function setup() {
   return { source, out, e };
 }
 describe("copy-first operation and verified rollback", () => {
+  it("copies every included mixed-format file, routing warnings and images to Needs Review", async () => {
+    const { out, e } = await setup();
+    const image = new File(
+      [new Uint8Array([137, 80, 78, 71, 1, 2, 3])],
+      "photo.png",
+      { lastModified: 1000 },
+    );
+    const planned = completePlan([
+      e,
+      {
+        ...e,
+        id: "warning",
+        path: "second/old.txt",
+        warning: "Ambiguous category",
+      },
+      {
+        ...e,
+        id: "image",
+        path: "Photos/photo.png",
+        name: image.name,
+        file: image,
+        size: image.size,
+        status: "unsupported",
+      },
+      { ...e, id: "excluded", path: "private/old.txt", approved: false },
+    ]);
+    const r = await copyApproved(undefined, handle(out), planned, () => {});
+    expect(r.manifest.plan).toHaveLength(3);
+    expect(r.manifest.results.every((r) => r.status === "copied")).toBe(true);
+    expect(
+      r.manifest.plan
+        .filter((p) => p.route === "review")
+        .map((p) => p.destination),
+    ).toEqual(["Needs Review/second/old.txt", "Needs Review/Photos/photo.png"]);
+    expect(
+      (await verifyCopies(r.dir, r.manifest)).every(
+        (c) => c.status === "verified",
+      ),
+    ).toBe(true);
+    expect(parseSavedManifest(r.manifest).plan[1].reason).toBe(
+      "Ambiguous category",
+    );
+  });
+  it("continues scanning healthy siblings and records inaccessible folders and files", async () => {
+    const root = new Dir("root");
+    const bad = await root.getDirectoryHandle("denied", { create: true });
+    bad.entries = async function* () {
+      throw new DOMException("No access", "NotAllowedError");
+    };
+    const missing = await root.getFileHandle("unreadable.txt", {
+      create: true,
+    });
+    missing.getFile = async () => {
+      throw new DOMException("Missing", "NotFoundError");
+    };
+    await root.getFileHandle("good.txt", { create: true });
+    const result = await inventory(handle(root));
+    expect(result.entries).toHaveLength(2);
+    expect(
+      result.entries.find((e) => e.name === "unreadable.txt")?.scanError,
+    ).toContain("Missing");
+    expect(result.issues[0].path).toContain("denied");
+    const planned = completePlan(
+      result.entries.map((e) => ({ ...e, approved: true })),
+    );
+    const copy = await copyApproved(
+      undefined,
+      handle(new Dir("out")),
+      planned,
+      () => {},
+      result.issues,
+    );
+    expect(copy.manifest.results.map((r) => r.status)).toEqual([
+      "failed",
+      "copied",
+    ]);
+    expect(parseSavedManifest(copy.manifest).scanIssues).toHaveLength(1);
+  });
+  it("streams verification for files above the analysis limit", async () => {
+    const file = new File(
+      [new Uint8Array(21 * 1024 * 1024).fill(7)],
+      "large.bin",
+    );
+    const expected = Buffer.from(
+      await crypto.subtle.digest("SHA-256", await file.arrayBuffer()),
+    ).toString("hex");
+    file.arrayBuffer = async () => {
+      throw new Error("Whole-file allocation forbidden");
+    };
+    expect(await hash(file)).toBe(expected);
+  });
   it("retains the last persisted report and output handle when a manifest write interrupts copying", async () => {
     const { out, e } = await setup();
     let savedDir: Dir | undefined;

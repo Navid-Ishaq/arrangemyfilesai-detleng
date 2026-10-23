@@ -22,3 +22,13 @@ Optional Guide smoke tests use synthetic questions and provider quota; no new li
 - Inject report-write failure after writing an output: retain the last persisted manifest and output handle; do not count unrecorded output as confirmed.
 - Reject malformed manifests, path traversal and unmatched results.
 - Open a JSON-only report after reload; require selecting the actual output folder for hash recheck. This adds reporting, not automatic resume.
+
+## Complete-batch workflow acceptance (2026-10-23)
+
+- 131-file contract: all included by default, 83 category plans + 48 Needs Review; no silent exclusions.
+- Unsupported images copied byte-for-byte into original relative review paths without analysis.
+- Explicit exclusion and category-plan acceptance are independent.
+- Additive inputs preserve edits/exclusions; duplicate same-handle inputs ignored; combined limit reported.
+- Unreadable files fail explicitly while healthy siblings copy; denied folders produce persistent unscanned-location warnings.
+- >20 MB SHA-256 uses streaming, tested against native SHA-256 with whole-file allocation prohibited.
+- Browser: Run complete 131-file workflow creates two real OPFS input folders (70 + 61), plans with the production worker, copies to category/review destinations, rechecks all outputs and confirms 131 originals remain. This does not validate native picker permissions or private disk/network workloads.

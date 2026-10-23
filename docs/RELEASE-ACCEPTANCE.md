@@ -13,3 +13,7 @@ Naming preservation; generic names and title styles; XML entities; missing metad
 Development server > Quick Guide > Run organizer benchmark. Creates 100 then 500 unique synthetic documents across TXT/MD/CSV/DOCX/PDF/XLSX/PPTX. Planning calls the real browser parser worker. Known title/category expectations are checked. Approved copies are written through production copyApproved into browser-owned OPFS, SHA-256 verified and reopened to confirm presence and size. Generator time is excluded; copy timing includes manifest persistence and read-back. Browser UI rendering of a full review list and native destination-picker performance are separate from this engine benchmark.
 
 These generated documents have explicit identifiable headings and rules. Perfect fixture matches are not real-world accuracy statistics. No private assignments/backups are accessed. A commercial claim requires wider owner/beta workloads, complex/encrypted/scanned examples and representative disk/network storage testing.
+
+## Complete output contract
+
+All inventoried files are included unless explicitly excluded. Uncertain/unsupported content copies unchanged into Needs Review. Every known input is either organized, review-copied, explicitly excluded, failed or pending. Unscanned content is recorded separately and prevents claims of complete-input success. Native large/deep-folder/picker acceptance remains necessary for commercial readiness.
