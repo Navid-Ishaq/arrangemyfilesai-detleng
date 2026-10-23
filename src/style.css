@@ -2312,3 +2312,35 @@ footer.compact-footer { padding:32px clamp(20px,6vw,100px) 20px; background:#eaf
 footer.compact-footer a, footer.compact-footer button { font-size:17px; color:#183e32; line-height:1.65; font-weight:500; }
 /* Help belongs in navigation, never over file actions. */
 header nav .header-guide-launcher { position:static; font-size:16px; padding:10px 14px; border-radius:10px; white-space:normal; }
+/* A clear hierarchy: one primary action, restrained supporting actions. */
+header nav > button { font-weight:500; }
+header nav .header-guide-launcher {
+  background:#f0edf8;
+  color:#4a3974;
+  border:1px solid #c6bada;
+  box-shadow:none;
+  font-size:16px;
+  font-weight:600;
+  padding:10px 14px;
+  min-height:44px;
+  gap:8px;
+}
+header nav .header-guide-launcher:hover:not(:disabled),
+header nav .header-guide-launcher[aria-expanded="true"] {
+  background:#e5ddf2;
+  color:#392657;
+  box-shadow:none;
+  transform:none;
+}
+header nav .desk-link {
+  background:#f6f9f5;
+  color:#234d40;
+  border:1px solid #b5c8bd;
+  font-weight:500;
+  min-height:44px;
+  padding:10px 14px;
+}
+header .login-trigger { min-height:44px; padding:10px 14px; }
+header .header-action { min-height:44px; font-weight:600; }
+header nav .button.header-guide-launcher { background:#f0edf8; color:#4a3974; border-color:#c6bada; box-shadow:none; font-size:16px; font-weight:600; }
+header nav .button.header-guide-launcher:hover:not(:disabled), header nav .button.header-guide-launcher[aria-expanded="true"] { background:#e5ddf2; color:#392657; box-shadow:none; transform:none; }
