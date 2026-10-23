@@ -2249,3 +2249,47 @@ footer.ecosystem-footer { display:block; background:#123d32; color:#fff; padding
 @media(max-width:800px) { .ecosystem-footer .ecosystem-cards { grid-template-columns:1fr; } header nav.open { display:flex; flex-direction:column; align-items:stretch; } header .header-action { display:inline-flex; } .demo-progress { flex-wrap:wrap; gap:16px; } .demo-bottom { flex-wrap:wrap; gap:16px; } }
 header .header-action { display:inline-flex; background:#234d40; color:white; }
 @media(max-width:800px) { header nav { top:100%; } }
+
+/* Readable explanations: scoped to introductions and user guidance. */
+.family-page .family-welcome p,
+.family-page .family-card p,
+.family-page .scene-body .scene-description,
+.help-page .help-grid p,
+.demo-page .manual-example p {
+  font-size:20px;
+  line-height:1.75;
+  color:#304438;
+}
+.family-page .scene-body dl { grid-template-columns:minmax(140px,auto) minmax(0,1fr); font-size:18px; line-height:1.7; gap:16px 22px; }
+.family-page .scene-body dt { font-weight:600; color:#344c40; }
+.family-page .scene-body dd { color:#273c32; overflow-wrap:anywhere; }
+.family-page .scene-body .eyebrow,
+.family-page .scene-top,
+.family-page .scene-symbol span,
+.family-page .family-status,
+.family-page .official-link,
+.family-page .family-footnote,
+.family-page .family-card > span,
+.help-page .help-grid .label { font-size:17px; line-height:1.65; color:#3c5345; }
+.family-page .scene-symbol span { text-align:center; padding-inline:12px; letter-spacing:0; }
+.family-page .scene-controls { flex-wrap:wrap; gap:18px; }
+.family-page .scene-controls .button { font-size:18px; white-space:normal; }
+.family-page .scene-body > *, .help-page .help-grid article { min-width:0; }
+.help-page .help-grid article { padding:34px; }
+.help-page .help-grid h2 { font-size:28px; line-height:1.35; }
+.help-page .help-grid p { max-width:65ch; }
+@media(max-width:1000px) {
+  .family-page .scene-body { grid-template-columns:1fr; gap:32px; }
+  .family-page .scene-symbol { width:220px; margin-inline:auto; }
+}
+@media(max-width:700px) {
+  .family-page .family-welcome p, .family-page .family-card p,
+  .family-page .scene-body .scene-description, .help-page .help-grid p,
+  .demo-page .manual-example p { font-size:18px; }
+  .family-page .scene-body dl { grid-template-columns:1fr; gap:6px; }
+  .family-page .scene-body dd { margin-bottom:16px; }
+  .family-page .scene-symbol { width:190px; height:190px; }
+  .family-page .scene-controls .button { max-width:100%; }
+  .help-page .help-grid article { padding:24px; }
+  .help-page .help-grid h2 { font-size:25px; }
+}
