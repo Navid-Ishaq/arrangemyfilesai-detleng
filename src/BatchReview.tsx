@@ -294,7 +294,7 @@ export function BatchReview({
           {included.length} included · {organizeCount} category plans +{" "}
           {reviewCount} Needs Review · originals preserved
         </span>
-        <button
+        {samples ? <strong role="status">Preview only — no files will be copied. Use Add files or Add folder in a new batch to test real copying.</strong> : <button
           className="button"
           disabled={
             !canCopy ||
@@ -308,7 +308,7 @@ export function BatchReview({
         >
           Copy {included.length === entries.length ? "all " : ""}
           {included.length} files
-        </button>
+        </button>}
       </div>
       {awaitingPlan && (
         <p role="status">

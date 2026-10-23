@@ -44,3 +44,10 @@ After a refresh, open the session folder containing operation-manifest.json usin
 202 included with 72 recorded copies and 130 pending is incomplete even with zero recorded failures. Manifest-write interruptions stop copying; a file written immediately before the interruption may exist without a saved record. Keep outputs and inspect the report. No automatic resume is available. A successful known-file copy does not mean complete input when the scan has unscanned locations.
 
 Rollback is available for the current open copy session. It checks hashes before deleting generated copies and retains modified outputs. Original files are unaffected. Read-only saved-report viewing after reload does not restore rollback.
+
+
+## Interactive walkthrough and ecosystem navigation
+
+How it works opens a three-step simulation: add/build, review the whole batch, and copy/check results. Every example starts included, including Needs Review; exclusion is deliberate. Simulated results do not verify or copy real files. Quick Guide explains the current controls, counts, limits, reports and recovery. Synthetic workspace samples show a preview-only instruction instead of a disabled copy action.
+
+The header Automation Desk opens https://automation.detleng.com/#desk in a new tab. Footer cards remain ordered: DeTLeng, LFDS, DeTLeng Network. Login and Create Account are launch-stage previews: fields/submission are disabled, no credentials are transmitted, and Continue Free closes the modal. Escape and the close button also dismiss it. No account is required.

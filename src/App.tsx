@@ -1,3 +1,4 @@
+import { LaunchLogin, EcosystemFooter, InteractiveManual, QuickManual } from "./WebsiteManual";
 import { DEFAULT_RULES, parseRules } from "./naming";
 import {
   captureDrop,
@@ -64,7 +65,7 @@ import {
   Manifest,
   CopyInterruptedError,
 } from "./files";
-import { sampleDocuments, demoRows } from "./samples";
+import { sampleDocuments } from "./samples";
 import { BrowserChecks } from "./BrowserChecks";
 import { guideEndpoint } from "./guide-client";
 import { answerSchema } from "../server/contracts";
@@ -233,8 +234,7 @@ function App() {
   const [copyInterruption, setCopyInterruption] = useState("");
   const [guide, setGuide] = useState(false);
   const [familyIndex, setFamilyIndex] = useState(-1);
-  const [demoStep, setDemoStep] = useState(0);
-  const [demoAccepted, setDemoAccepted] = useState([true, true, false, true]);
+  const [loginOpen, setLoginOpen] = useState(false);
   const abort = useRef<AbortController | null>(null);
   const supportedBrowser =
     typeof window.showDirectoryPicker === "function" && window.isSecureContext;
@@ -594,19 +594,6 @@ function App() {
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
-      <div className="ecosystem">
-        <span>
-          A thoughtful tool from <strong>DeTLeng</strong>
-        </span>
-        <div>
-          {links.map(([name, url]) => (
-            <a href={url} target="_blank" rel="noreferrer" key={name}>
-              {name}
-              <ArrowUpRight size={11} />
-            </a>
-          ))}
-        </div>
-      </div>
       <header>
         <a
           className="brand"
@@ -633,15 +620,11 @@ function App() {
         </button>
         <nav className={mobile ? "open" : ""}>
           {nav.map(([id, label]) => (
-            <button
-              key={id}
-              aria-current={page === id ? "page" : undefined}
-              className={page === id ? "active" : ""}
-              onClick={() => go(id)}
-            >
-              {label}
-            </button>
+            <button key={id} aria-current={page === id ? "page" : undefined} className={page === id ? "active" : ""} onClick={() => go(id)}>{id === "demo" ? "How it works" : id === "family" ? "About" : label}</button>
           ))}
+          <button onClick={() => { go("help"); setTimeout(() => document.getElementById("privacy")?.scrollIntoView(), 0); }}>Privacy</button>
+          <a className="button desk-link" href="https://automation.detleng.com/#desk" target="_blank" rel="noopener noreferrer">Discuss at Automation Desk ↗</a>
+          <button className="login-trigger" onClick={() => setLoginOpen(true)}>Login</button>
         </nav>
         <button className="header-action" onClick={() => go("organize")}>
           Open workspace <ArrowUpRight size={15} />
@@ -1325,211 +1308,8 @@ function App() {
             </p>
           </section>
         )}
-        {page === "demo" && (
-          <section className="section demo-page">
-            <div className="eyebrow">A LITTLE PREVIEW OF THE POSSIBILITIES</div>
-            <h1>Try a little clarity.</h1>
-            <p className="lead">
-              A fictional folder. Real choices. No setup required.
-            </p>
-            <div className="notice">
-              <Info size={17} /> All files and suggestions here are synthetic
-              examples. No file operations take place in this demo.
-            </div>
-            <div className="demo-progress">
-              {[
-                "The starting point",
-                "Review the possibilities",
-                "A clearer collection",
-              ].map((s, i) => (
-                <button
-                  key={s}
-                  className={demoStep === i ? "current" : ""}
-                  onClick={() => setDemoStep(i)}
-                >
-                  <span>{i + 1}</span>
-                  {s}
-                </button>
-              ))}
-            </div>
-            <div className="demo-board">
-              <div className="section-heading">
-                <div>
-                  <h2>
-                    {
-                      [
-                        "A familiar little mess.",
-                        "You make the final call.",
-                        "An example of your new collection.",
-                      ][demoStep]
-                    }
-                  </h2>
-                  <p>
-                    {
-                      [
-                        "Some filenames tell you very little. Let’s imagine a more useful plan.",
-                        "Toggle the files you would approve. A scanned PDF stays for review.",
-                        "This is a simulated result. Your own files have not been touched.",
-                      ][demoStep]
-                    }
-                  </p>
-                </div>
-                <FolderTree size={34} />
-              </div>
-              {demoRows.map((r, i) => (
-                <div className="demo-file" key={r.old}>
-                  <FileText />
-                  <div>
-                    <small>
-                      {demoStep === 0
-                        ? "ORIGINAL FILE"
-                        : demoStep === 1
-                          ? r.old
-                          : r.folder}
-                    </small>
-                    <strong>{demoStep === 0 ? r.old : r.title}</strong>
-                    {demoStep > 0 && <p>{r.reason}</p>}
-                  </div>
-                  {demoStep === 1 ? (
-                    <label className="demo-select">
-                      <input
-                        aria-label={"Approve sample " + r.old}
-                        type="checkbox"
-                        checked={demoAccepted[i]}
-                        disabled={i === 2}
-                        onChange={(e) =>
-                          setDemoAccepted((old) =>
-                            old.map((v, n) => (n === i ? e.target.checked : v)),
-                          )
-                        }
-                      />
-                      {i === 2 ? "Needs OCR" : "Approve"}
-                    </label>
-                  ) : (
-                    <span className="status-tag">
-                      {demoStep === 0
-                        ? "Unsorted"
-                        : demoAccepted[i]
-                          ? "Example copy"
-                          : "Skipped"}
-                    </span>
-                  )}
-                </div>
-              ))}
-              <div className="demo-bottom">
-                <span>
-                  {demoAccepted.filter(Boolean).length} sample files selected
-                </span>
-                <Button
-                  onClick={() =>
-                    demoStep < 2 ? setDemoStep(demoStep + 1) : go("organize")
-                  }
-                >
-                  {
-                    [
-                      "See suggested names",
-                      "Preview example result",
-                      "Try your own folder",
-                    ][demoStep]
-                  }
-                  <ArrowRight size={16} />
-                </Button>
-              </div>
-            </div>
-          </section>
-        )}
-        {page === "help" && (
-          <section className="section help-page">
-            <div className="eyebrow">A FRIENDLY PLACE TO START</div>
-            <h1>
-              A few steps.
-              <br />A clearer workspace.
-            </h1>
-            <p className="lead">
-              No account or AI installation needed for organization.
-            </p>
-            <div className="help-grid">
-              <article>
-                <span className="label">01 · ADD DOCUMENTS</span>
-                <h2>Start with your files.</h2>
-                <p>
-                  Use current desktop Chrome or Edge. Drop multiple files or
-                  folders together, or use Add folder repeatedly and Add files.
-                  New inputs are added to your batch. No Ollama, local model or
-                  cloud AI is required. Originals stay untouched.
-                </p>
-                <Button onClick={() => go("organize")}>
-                  Open organizer <ArrowRight size={16} />
-                </Button>
-              </article>
-              <article>
-                <span className="label">02 · BUILD A LOCAL PLAN</span>
-                <h2>Evidence. Rules. Clear names.</h2>
-                <p>
-                  Keep descriptive filenames, recover useful titles from
-                  metadata and headings, and apply literal keyword rules to
-                  folders. Customize folder rules before building a plan.
-                  Ambiguous or unreadable documents keep their original name
-                  with a review warning.
-                </p>
-                <p>
-                  PDFs use their first 2 pages; Word uses opening content,
-                  slides the first 4 slides, and spreadsheets the first 2 sheets
-                  / 12 rows. This is quick organization, not full-document
-                  understanding.
-                </p>
-              </article>
-              <article>
-                <span className="label">03 · REVIEW BEFORE COPYING</span>
-                <h2>Start small. Stay in control.</h2>
-                <p>
-                  All inventoried files are included by default. Clear category
-                  plans go into category folders; uncertain, unsupported or
-                  unaccepted plans go unchanged into Needs Review, retaining
-                  input names and subfolders. Uncheck a file only to
-                  deliberately exclude it. Count cards filter the view; they
-                  never change inclusion.
-                </p>
-                <p>
-                  Choose an output folder separate from the source. Each run
-                  creates a new session folder and a manifest. Existing files
-                  are never intentionally overwritten; original documents remain
-                  untouched.
-                </p>
-                <p>
-                  Rollback verifies copied file hashes before removing unchanged
-                  outputs. Keep the page open to use session rollback. After a
-                  reload, the saved manifest supports manual recovery.
-                </p>
-              </article>
-              <article>
-                <span className="label">04 · UNDERSTAND THE BOUNDARIES</span>
-                <h2>Private documents. Optional online help.</h2>
-                <p>
-                  TXT, Markdown, DOCX, text-based PDFs, CSV, XLSX and PPTX are
-                  supported. Images and scanned PDFs without readable text are
-                  not supported. Initial limits: 1,000 files, 20 MB per file, up
-                  to 14,000 extracted characters, with a maximum 3,600-character
-                  opening excerpt checked by local naming rules. PDFs use only
-                  the first 2 pages. Large PDFs and workbooks are sampled. Scan
-                  limitations are listed before copying. If a folder cannot be
-                  fully scanned, the output cannot be claimed as the complete
-                  input.
-                </p>
-                <p>
-                  Scanned-PDF OCR, legacy DOC/XLS, and encrypted documents are
-                  not supported. Rules and extracted titles can be imperfect;
-                  review every suggestion.
-                </p>
-                <p>
-                  The optional Guide sends your messages to GroqCloud. App
-                  context is opt-in and restricted to stage/error codes. Do not
-                  paste confidential information or secrets into the chat.
-                </p>
-              </article>
-            </div>
-          </section>
-        )}
+        {page === "demo" && <InteractiveManual openWorkspace={() => go("organize")} />}
+        {page === "help" && <QuickManual openWorkspace={() => go("organize")} />}
         {import.meta.env.DEV && page === "help" && (
           <>
             <BrowserChecks />
@@ -1539,57 +1319,8 @@ function App() {
           </>
         )}
       </main>
-      <footer>
-        <div>
-          <a
-            className="brand"
-            href="#home"
-            onClick={(e) => {
-              e.preventDefault();
-              go("home");
-            }}
-          >
-            <span className="brandmark">
-              <Layers size={21} />
-            </span>
-            <span>
-              Arrange My Files <b>AI</b>
-              <small>BY DETLENG</small>
-            </span>
-          </a>
-          <p>Your Files. Your Computer. Your AI.</p>
-        </div>
-        <div>
-          <span className="label">THE DETLENG ECOSYSTEM</span>
-          {links.map(([n, u]) => (
-            <a key={n} href={u} target="_blank" rel="noreferrer">
-              {n} <ArrowUpRight size={12} />
-            </a>
-          ))}
-        </div>
-        <div>
-          <span className="label">BUILT WITH CARE</span>
-          <button onClick={() => go("help")}>Quick Guide & privacy</button>
-          <button onClick={() => go("family")}>Meet the AI Family</button>
-          <a
-            href="https://github.com/Navid-Ishaq/arrangemyfilesai-detleng"
-            target="_blank"
-            rel="noreferrer"
-          >
-            View on GitHub <ArrowUpRight size={12} />
-          </a>
-          <small>Local organization · optional cloud Guide</small>
-        </div>
-        <div className="footer-bottom">
-          <span>
-            © {new Date().getFullYear()} DeTLeng. Thoughtful tools for everyday
-            work.
-          </span>
-          <span>
-            Made for a little less chaos. <Heart size={12} />
-          </span>
-        </div>
-      </footer>
+      <EcosystemFooter />
+      {loginOpen && <LaunchLogin close={() => setLoginOpen(false)} />}
       {guide && (
         <Guide
           stage={page === "demo" ? "demo" : stage}
