@@ -624,6 +624,7 @@ function App() {
           ))}
           <button onClick={() => { go("help"); setTimeout(() => document.getElementById("privacy")?.scrollIntoView(), 0); }}>Privacy</button>
           <a className="button desk-link" href="https://automation.detleng.com/#desk" target="_blank" rel="noopener noreferrer">Discuss at Automation Desk ↗</a>
+          <button className="button guide-launcher header-guide-launcher" aria-expanded={guide} onClick={() => { setGuide(!guide); setMobile(false); }}><span aria-hidden="true">🤖</span> DeTLeng AI Guide</button>
           <button className="login-trigger" onClick={() => setLoginOpen(true)}>Login</button>
         </nav>
         <button className="header-action" onClick={() => go("organize")}>
@@ -1311,7 +1312,7 @@ function App() {
         )}
       </main>
       <EcosystemFooter navigate={(page) => { if (page === "privacy") { go("help"); setTimeout(() => document.getElementById("privacy")?.scrollIntoView(), 0); } else go(page); }} openLogin={() => setLoginOpen(true)} />
-      {!guide && <button className="button guide-launcher site-guide-launcher" aria-expanded={false} onClick={() => setGuide(true)}><span className="guide-emoji" aria-hidden="true">🤖</span> DeTLeng AI Guide</button>}
+
       {loginOpen && <LaunchLogin close={() => setLoginOpen(false)} />}
       {guide && (
         <Guide

@@ -2310,3 +2310,5 @@ footer.compact-footer { padding:32px clamp(20px,6vw,100px) 20px; background:#eaf
 @media(max-width:1000px) { .compact-footer .footer-columns { grid-template-columns:1fr 1fr; } }
 @media(max-width:600px) { .compact-footer .footer-columns { grid-template-columns:1fr; gap:24px; } .site-guide-launcher { right:12px; bottom:12px; padding:12px 16px; font-size:17px!important; } html { scroll-padding-top:170px; } }
 footer.compact-footer a, footer.compact-footer button { font-size:17px; color:#183e32; line-height:1.65; font-weight:500; }
+/* Help belongs in navigation, never over file actions. */
+header nav .header-guide-launcher { position:static; font-size:16px; padding:10px 14px; border-radius:10px; white-space:normal; }
