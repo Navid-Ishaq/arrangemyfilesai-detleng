@@ -1379,6 +1379,7 @@ function Guide({
   const [chat, setChat] = useState<
     { role: string; text: string; action?: string }[]
   >([]);
+  const [connectionStatus, setConnectionStatus] = useState("Connecting to the Guide…");
   async function send(text = message) {
     if (!text.trim() || busy) return;
     const history = chat
@@ -1398,6 +1399,12 @@ function Guide({
       );
       if (!endpoint)
         throw new Error("Guide backend is not configured for this build.");
+      setConnectionStatus("Connecting to the Guide… First connection may take about a minute.");
+      const health = await fetch(endpoint + "/health", {
+        signal: AbortSignal.timeout(75000),
+      });
+      if (!health.ok) throw new Error("Guide connection failed.");
+      setConnectionStatus("Thinking…");
       const res = await fetch(endpoint + "/api/guide", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1423,7 +1430,7 @@ function Guide({
         ...old,
         {
           role: "notice",
-          text: "The online Guide is unavailable. Your local organizer still works. Open the Quick Guide for setup and troubleshooting.",
+          text: "The Guide could not connect in time. Please try sending your question again—the service may have been waking up. Your local organizer still works. If this continues, open the Quick Guide for troubleshooting.",
         },
       ]);
     } finally {
@@ -1527,7 +1534,7 @@ function Guide({
           ))}
           {busy && (
             <div className="progress">
-              <LoaderCircle className="spin" size={15} /> Thinking…
+              <LoaderCircle className="spin" size={15} /> {connectionStatus}
             </div>
           )}
         </div>
@@ -1544,6 +1551,12 @@ function Guide({
         <div>
           <textarea
             id="guide-message"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }
+            }}
             maxLength={2500}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -1562,3 +1575,5 @@ function Guide({
   );
 }
 export default App;
+
+
