@@ -1359,6 +1359,7 @@ function Guide({
   navigate: (action: string) => void;
 }) {
   const panelRef = useRef<HTMLElement>(null);
+  const conversationRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     panelRef.current
@@ -1380,6 +1381,12 @@ function Guide({
     { role: string; text: string; action?: string }[]
   >([]);
   const [connectionStatus, setConnectionStatus] = useState("Connecting to the Guide…");
+  useEffect(() => {
+    const content = conversationRef.current;
+    if (content && chat.length > 0) {
+      content.scrollTop = content.scrollHeight;
+    }
+  }, [chat, busy, connectionStatus]);
   async function send(text = message) {
     if (!text.trim() || busy) return;
     const history = chat
@@ -1453,7 +1460,7 @@ function Guide({
           <X size={20} />
         </button>
       </div>
-      <div className="guide-content">
+      <div className="guide-content" ref={conversationRef}>
         <div className="guide-disclosure">
           <Cloud size={16} />
           <p>
@@ -1575,5 +1582,6 @@ function Guide({
   );
 }
 export default App;
+
 
 
